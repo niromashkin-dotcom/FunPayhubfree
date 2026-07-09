@@ -1,0 +1,18 @@
+[Unit]
+Description=FunPayHub Telegram Bot Service
+After=network.target
+
+[Service]
+Type=simple
+User=funpayhub
+WorkingDirectory=/home/funpayhub/FunPayHub
+Environment="FUNPAYHUB_HEADLESS=1"
+EnvironmentFile=/home/funpayhub/.env
+ExecStart=/usr/bin/python3 tg_bot/tg_bot_service.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/funpayhub/bot.log
+StandardError=append:/var/log/funpayhub/bot.log
+
+[Install]
+WantedBy=multi-user.target

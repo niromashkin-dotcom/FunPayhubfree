@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoSMM — FunPay Hub</title>
+<link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
+<link rel="stylesheet" href="pages.css">
+</head>
+<body>
+
+<div class="aurora"></div>
+<div class="aurora-layer aurora-layer-1"></div>
+<div class="aurora-layer aurora-layer-2"></div>
+<div class="aurora-layer aurora-layer-3"></div>
+
+<div class="app">
+
+<aside class="sidebar sidebar-compact">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-mark">H</div>
+    <div class="sidebar-logo-text">FunPay Hub</div>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <a href="dashboard.html" class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/></svg>
+      <span>Dashboard</span>
+    </a>
+
+    <div class="sidebar-group">
+      <a href="account.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Seller</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="account.html" class="sidebar-sub">Профиль</a>
+        <a href="lots.html" class="sidebar-sub">Лоты</a>
+        <a href="balance.html" class="sidebar-sub">Баланс</a>
+        <a href="orders.html" class="sidebar-sub">Заказы</a>
+        <a href="sales.html" class="sidebar-sub">Продажи</a>
+        <a href="customers.html" class="sidebar-sub">Покупатели</a>
+        <a href="notifications.html" class="sidebar-sub">Уведомления</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="market.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Market</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="market.html" class="sidebar-sub">Анализ рынка</a>
+        <a href="advisor.html" class="sidebar-sub">AI Советник</a>
+        <a href="compare.html" class="sidebar-sub">Сравнение</a>
+        <a href="optimal.html" class="sidebar-sub">Оптимальная цена</a>
+        <a href="competitors.html" class="sidebar-sub">Конкуренты</a>
+        <a href="heatmap.html" class="sidebar-sub">Тепловая карта</a>
+        <a href="niches.html" class="sidebar-sub">Ниши</a>
+        <a href="ratings.html" class="sidebar-sub">Рейтинги</a>
+        <a href="margin.html" class="sidebar-sub">Маржа</a>
+        <a href="suppliers.html" class="sidebar-sub">Поставщики</a>
+      </div>
+    </div>
+
+<div class="sidebar-group">
+      <a href="automation.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span>Automation</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="scheduler.html" class="sidebar-sub">Планировщик</a>
+        <a href="autoreply.html" class="sidebar-sub">Автоответы</a>
+        <a href="autodelivery.html" class="sidebar-sub">Автовыдача</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="sales.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg>
+        <span>Analytics</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="analytics.html" class="sidebar-sub">Продажи и прибыль</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="system.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg>
+        <span>System</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="plugins.html" class="sidebar-sub">Плагины</a>
+        <a href="plugins_autostart.html" class="sidebar-sub">Автостарт плагинов</a>
+        <a href="system_health.html" class="sidebar-sub">Health Check</a>
+        <a href="logs.html" class="sidebar-sub">Логи</a>
+        <a href="system.html" class="sidebar-sub">Бэкапы</a>
+      </div>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <a href="assistant.html" class="sidebar-item" style="color:#a78bfa;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2"/><path d="M2 12h20v8a2 2 0 01-2 2H4a2 2 0 01-2-2z"/><path d="M6 18h.01M10 18h.01"/></svg>
+        <span>AI Ассистент</span>
+      </a>
+      <a href="help.html" class="sidebar-item help-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>Помощь</span>
+      </a>
+      <a href="appearance.html" class="sidebar-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <span>Settings</span>
+    </a>
+  </nav>
+</aside>
+
+  <div class="main">
+
+    <header class="topbar">
+      <div class="topbar-title"><b>Auto SMM</b></div>
+      <div class="topbar-search-hint" onclick="window.cmdk && window.cmdk.open()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Поиск</span>
+        <kbd>Ctrl K</kbd>
+      </div>
+      <div class="topbar-status">
+        <span class="status-dot" id="live-dot"></span>
+        <span id="live-text">Live</span>
+      </div>
+    </header>
+
+    <main class="content content-wide">
+
+<div class="tabs">
+                    <button class="tab-btn active" data-tab="settings">⚙️ Настройки</button>
+                    <button class="tab-btn" data-tab="matching">🔗 Матчинг лотов</button>
+                    <button class="tab-btn" data-tab="generator">🚀 Генератор лотов</button>
+                    <button class="tab-btn" data-tab="niches">📊 Анализ ниш</button>
+                </div>
+
+                <!-- ========== Вкладка: Настройки ========== -->
+                <div id="tab-settings" class="tab-content active">
+                    <div class="panel">
+                        <h2>Настройки AutoSMM</h2>
+                        <form id="autosmm-settings-form">
+                            <div class="form-row">
+                                <label>API ключ Twiboost</label>
+                                <input type="password" id="api_key" placeholder="Введите ключ" />
+                                <button type="button" id="test-api" class="btn btn-secondary">Проверить</button>
+                            </div>
+                            <div class="form-row">
+                                <label><input type="checkbox" id="ask_confirmation" checked /> Запрашивать подтверждение 'да' перед заказом</label>
+                            </div>
+                            <div class="form-row">
+                                <label><input type="checkbox" id="auto_refund" checked /> Авто-возврат при ошибке</label>
+                            </div>
+                            <div class="form-row">
+                                <label><input type="checkbox" id="dry_run" checked /> DRY-RUN режим (тест без реальных заказов)</label>
+                            </div>
+                            <div class="form-row">
+                                <label>Интервал проверки статуса (мин)</label>
+                                <input type="number" id="check_interval_minutes" value="5" min="1" max="60" />
+                            </div>
+                            <div class="form-row">
+                                <label>Уведомлять если баланс ниже (в валюте)</label>
+                                <input type="number" id="min_balance_alert" value="50" min="10" max="1000" />
+                            </div>
+                            <button type="submit" class="btn btn-primary">Сохранить настройки</button>
+                            <button type="button" id="reset-defaults" class="btn btn-secondary">Сбросить к defaults</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ========== Вкладка: Матчинг лотов ========== -->
+                <div id="tab-matching" class="tab-content">
+                    <div class="panel">
+                        <h2>Привязка лотов FunPay к услугам Twiboost</h2>
+                        <div class="row-actions">
+                            <button id="load-services" class="btn btn-primary">Загрузить услуги Twiboost</button>
+                            <button id="scan-lots" class="btn btn-secondary">Сканировать мои лоты</button>
+                            <button id="apply-auto" class="btn btn-success">Применить авто-привязку</button>
+                        </div>
+                        <div id="matching-results">
+                            <p>Нажмите «Сканировать мои лоты», чтобы увидеть предложения.</p>
+                        </div>
+                        <div id="current-mappings">
+                            <h3>Текущие привязки</h3>
+                            <div id="mappings-list">Загрузка...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========== Вкладка: Генератор лотов ========== -->
+                <div id="tab-generator" class="tab-content">
+                    <div class="panel">
+                        <h2>Генерация лотов по нише</h2>
+                        <div class="form-row">
+                            <label>Выберите услугу Twiboost</label>
+                            <select id="service-select"><option value="">Сначала загрузите услуги</option></select>
+                        </div>
+                        <div class="form-row">
+                            <label>Количество в пакете</label>
+                            <input type="number" id="gen-quantity" value="1000" min="100" step="100" />
+                        </div>
+                        <div class="form-row">
+                            <label>Цена (₽)</label>
+                            <input type="number" id="gen-price" value="40" step="1" />
+                        </div>
+                        <div class="form-row">
+                            <label>Количество вариантов</label>
+                            <input type="number" id="gen-variations" value="15" min="1" max="50" />
+                        </div>
+                        <button id="generate-lots" class="btn btn-primary">Сгенерировать лоты</button>
+                        <div id="generated-lots"></div>
+                    </div>
+                </div>
+
+                <!-- ========== Вкладка: Анализ ниш ========== -->
+                <div id="tab-niches" class="tab-content">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <h2 style="margin:0">Поиск прибыльных ниш</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="opacity:.8">Бюджет ₽</label>
+        <input id="niches-budget" type="number" value="500" min="10" step="50" style="width:110px">
+        <button id="scan-niches" class="btn btn-primary">🔍 Найти ниши</button>
+        <button id="apply-niches" class="btn btn-success" disabled>✅ Применить выбранные</button>
+      </div>
+    </div>
+    <div id="niches-meta" style="margin:12px 0;opacity:.7"></div>
+    <div id="niches-results" style="overflow:auto"></div>
+  </div>
+  <div class="panel" style="margin-top:14px"><h3>Лог генерации</h3><div id="niches-log" style="font-family:monospace;font-size:.85em;opacity:.8;min-height:36px;white-space:pre-wrap">Готово к анализу…</div></div>
+</div>
+
+            </div> <!-- /page-content -->
+        </div> <!-- /main-content -->
+    </div>
+
+    <script>
+        // ===== Загрузка текущих настроек =====
+        async function loadSettings() {
+            try {
+                const r = await fetch('/api/plugins/autosmm_plugin/config');
+                const cfg = await r.json();
+                if (cfg) {
+                    document.getElementById('api_key').value = cfg.api_key || '';
+                    document.getElementById('ask_confirmation').checked = !!cfg.ask_confirmation;
+                    document.getElementById('auto_refund').checked = !!cfg.auto_refund;
+                    document.getElementById('dry_run').checked = !!cfg.dry_run;
+                    document.getElementById('check_interval_minutes').value = cfg.check_interval_minutes || 5;
+                    document.getElementById('min_balance_alert').value = cfg.min_balance_alert || 50;
+                }
+            } catch(e) {}
+        }
+
+        // ===== Сохранение настроек =====
+        document.getElementById('autosmm-settings-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                api_key: document.getElementById('api_key').value,
+                ask_confirmation: document.getElementById('ask_confirmation').checked,
+                auto_refund: document.getElementById('auto_refund').checked,
+                dry_run: document.getElementById('dry_run').checked,
+                check_interval_minutes: parseInt(document.getElementById('check_interval_minutes').value) || 5,
+                min_balance_alert: parseFloat(document.getElementById('min_balance_alert').value) || 50,
+            };
+            const r = await fetch('/api/plugins/autosmm_plugin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const res = await r.json();
+            if (res.ok) window.toast('Настройки сохранены', 'success');
+            else window.toast('Ошибка сохранения', 'error');
+        });
+
+        // ===== Проверка API =====
+        document.getElementById('test-api').addEventListener('click', async () => {
+            const key = document.getElementById('api_key').value;
+            if (!key) return window.toast('Введите API ключ', 'warn');
+            const r = await fetch('/api/plugins/autosmm_plugin/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'test_api', payload: {} })
+            });
+            const res = await r.json();
+            if (res.ok) window.toast(res.message || 'API работает', 'success');
+            else window.toast(res.error || 'Ошибка', 'error');
+        });
+
+        // ===== Загрузка услуг Twiboost =====
+        document.getElementById('load-services').addEventListener('click', async () => {
+            const r = await fetch('/api/plugins/autosmm_plugin/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'load_twiboost_services', payload: { force: true } })
+            });
+            const res = await r.json();
+            if (res.ok) {
+                window.toast(res.message, 'success');
+                // Заполняем select для генератора
+                const sel = document.getElementById('service-select');
+                sel.innerHTML = '<option value="">Выберите услугу</option>';
+                // res.sample содержит первые 5, но нам нужен полный список? Можно запросить отдельно.
+                // Пока просто обновим.
+                loadServicesForSelect();
+            } else {
+                window.toast(res.error || 'Ошибка', 'error');
+            }
+        });
+
+        async function loadServicesForSelect() {
+            // Запросим список услуг для селекта
+            const r = await fetch('/api/plugins/autosmm_plugin/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'load_twiboost_services', payload: { force: false } })
+            });
+            const res = await r.json();
+            if (res.ok && res.services) {
+                const sel = document.getElementById('service-select');
+                sel.innerHTML = '<option value="">Выберите услугу</option>';
+                res.services.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.service_id;
+                    opt.textContent = s.name + ' (' + s.service_id + ')';
+                    sel.appendChild(opt);
+                });
+            }
+        }
+
+        // ===== Сканирование моих лотов =====
+        document.getElementById('scan-lots').addEventListener('click', async () => {
+            const r = await fetch('/api/plugins/autosmm_plugin/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'scan_my_lots', payload: {} })
+            });
+            const res = await r.json();
+            if (res.ok) {
+                const out = document.getElementById('matching-results');
+                let html = '<h3>Результаты сканирования</h3>';
+                html += '<p>Всего лотов: ' + res.stats.total_lots + '</p>';
+                html += '<p>Авто-матч: ' + res.stats.auto_matched + '</p>';
+                html += '<p>Требуют проверки: ' + res.stats.needs_review + '</p>';
+                html += '<p>Пропущено: ' + res.stats.skipped + '</p>';
+                if (res.auto && Object.keys(res.auto).length) {
+                    html += '<h4>Авто-привязка (высокая уверенность)</h4><ul>';
+                    for (const [lotId, m] of Object.entries(res.auto)) {
+                        html += <li>Лот  → услуга  (ID: ) [score: ]</li>;
+                    }
+                    html += '</ul>';
+                }
+                if (res.suggested && Object.keys(res.suggested).length) {
+                    html += '<h4>Предложенные (требуют подтверждения)</h4><ul>';
+                    for (const [lotId, m] of Object.entries(res.suggested)) {
+                        html += <li>Лот  →  <button class="btn btn-sm btn-primary" onclick="confirmMapping('', '', '')">Подтвердить</button></li>;
+                    }
+                    html += '</ul>';
+                }
+                out.innerHTML = html;
+                // Обновить текущие привязки
+                loadCurrentMappings();
+            } else {
+                window.toast(res.error || 'Ошибка сканирования', 'error');
+            }
+        });
+
+        // ===== Подтверждение suggested =====
+        window.confirmMapping = async function(lotId, serviceId, serviceName) {
+            const r = await fetch('/api/plugins/autosmm_plugin/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'confirm_suggested', payload: { lot_id: lotId, service_id: serviceId, service_name: serviceName } })
+            });
+            const res = await r.json();
+            if (res.ok) {
+                window.toast('Привязка подтверждена', 'success');
+                loadCurrentMappings();
+            } else {
+                window.toast(res.error || 'Ошибка', 'error');
+            }
+        };
+
+        // ===== Применить авто-привязку =====
+        document.getElementById('apply-auto').addEventListener('click', async () => {
+            const r = await fetch('/api/plugins/autosmm_plugin/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'apply_auto_match', payload: {} })
+            });
+            const res = await r.json();
+            if (res.ok) {
+                window.toast(Применено  привязок, 'success');
+                loadCurrentMappings();
+            } else {
+                window.toast(res.error || 'Ошибка', 'error');
+            }
+        });
+
+        // ===== Загрузка текущих привязок =====
+        async function loadCurrentMappings() {
+            const r = await fetch('/api/plugins/autosmm_plugin/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_current_mappings', payload: {} })
+            });
+            const res = await r.json();
+            const container = document.getElementById('mappings-list');
+            if (res.ok && res.mappings && res.mappings.length) {
+                let html = '<table class="table"><tr><th>Лот</th><th>Услуга</th><th>Кол-во</th><th>Действие</th></tr>';
+                res.mappings.forEach(m => {
+                    html += <tr>
+                        <td></td>
+                        <td> ()</td>
+                        <td></td>
+                        <td><button class="btn btn-sm btn-danger" onclick="removeMapping('')">Удалить</button></td>
+                    </tr>;
+                });
+                html += '</table>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<p>Нет привязок.</p>';
+            }
+        }
+
+        window.removeMapping = async function(lotId) {
+            if (!confirm('Удалить привязку для лота ' + lotId + '?')) return;
+            const r = await fetch('/api/plugins/autosmm_plugin/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'remove_mapping', payload: { lot_id: lotId } })
+            });
+            const res = await r.json();
+            if (res.ok) {
+                window.toast('Привязка удалена', 'success');
+                loadCurrentMappings();
+            } else {
+                window.toast(res.error || 'Ошибка', 'error');
+            }
+        };
+
+        // ===== Генерация лотов =====
+        document.getElementById('generate-lots').addEventListener('click', async () => {
+            const serviceId = document.getElementById('service-select').value;
+            const quantity = parseInt(document.getElementById('gen-quantity').value) || 1000;
+            const price = parseFloat(document.getElementById('gen-price').value) || 40;
+            const variations = parseInt(document.getElementById('gen-variations').value) || 15;
+            if (!serviceId) return window.toast('Выберите услугу', 'warn');
+
+            const r = await fetch('/api/dev/lots/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ service_id: serviceId, quantity, price, variations })
+            });
+            const res = await r.json();
+            if (res.ok) {
+                const out = document.getElementById('generated-lots');
+                let html = <h3>Сгенерировано  лотов</h3><div style="max-height:300px;overflow-y:auto;">;
+                res.lots.forEach((lot, idx) => {
+                    html += <div><strong>.</strong>  —  ₽</div>;
+                });
+                html += '</div>';
+                out.innerHTML = html;
+                window.toast(Сгенерировано  вариантов, 'success');
+            } else {
+                window.toast(res.error || 'Ошибка генерации', 'error');
+            }
+        });
+
+        // ===== Анализ ниш =====
+        document.getElementById('scan-niches').addEventListener('click', async () => {
+            const r = await fetch('/api/dev/niches/scan');
+            const res = await r.json();
+            if (res.ok) {
+                const out = document.getElementById('niches-results');
+                let html = '<h3>Доступные ниши (по Twiboost)</h3><table class="table"><tr><th>Ниша</th><th>Кол-во услуг</th><th>Самая дешёвая (за 1000)</th><th>Рекоменд. цена</th><th>Маржа</th></tr>';
+                res.niches.forEach(n => {
+                    html += <tr>
+                        <td></td>
+                        <td></td>
+                        <td> ₽</td>
+                        <td> ₽</td>
+                        <td>%</td>
+                    </tr>;
+                });
+                html += '</table>';
+                out.innerHTML = html;
+            } else {
+                window.toast(res.error || 'Ошибка', 'error');
+            }
+        });
+
+        // ===== Вкладки =====
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+            });
+        });
+
+        // ===== Инициализация =====
+        loadSettings();
+        loadCurrentMappings();
+        loadServicesForSelect();
+    </script>
+  <script src="/static/autosmm_niches_v32.js"></script>
+
+    </main>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="live.js"></script>
+<script src="cmdk.js"></script>
+<script src="hotkeys.js"></script>
+<script src="ai-widget.js"></script>
+</body>
+</html>

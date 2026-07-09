@@ -1,0 +1,30 @@
+/venv
+/venv2
+__pycache__/
+*.pyc
+/.idea
+/logs
+/storage
+/build
+/dist
+/webview_data
+*.zip
+test.py
+
+# --- Секреты и приватные данные — НИКОГДА не коммитить ---
+.env
+.env.*
+*.original
+configs/secrets/
+configs/funpay_credentials.json
+tg_bot/authorized_users.json
+_archive/
+
+# Пользовательские данные и рантайм-состояние (не код, генерируется на лету)
+configs/*.json
+configs/plugins/*.json
+!configs/plugins/*.json.safe
+configs/autodelivery/
+configs/test_plugins/
+data/state/
+data/autosmm/

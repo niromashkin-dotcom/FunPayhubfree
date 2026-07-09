@@ -1,0 +1,14 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pip install -r requirements.txt"
+
+[deploy]
+# funpayhub_main.py сам определяет headless-режим по переменным окружения Railway
+# и слушает 0.0.0.0:$PORT. tg_bot_service.py — процесс отдельного Control Panel бота.
+# Если один из двух процессов упадёт, второй использует "&&"/"&" не даёт это выявить —
+# поэтому оба явно перезапускаемы политикой restartPolicy ниже.
+startCommand = "python funpayhub_main.py & python tg_bot_service.py & wait -n"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

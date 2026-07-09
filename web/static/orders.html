@@ -1,0 +1,184 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>FunPay Hub — Заказы</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="pages.css">
+<script src="theme.js"></script>
+<script src="onboarding.js"></script>
+</head>
+<body>
+<div class="aurora"></div>
+<div class="app">
+<aside class="sidebar sidebar-compact">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-mark">H</div>
+    <div class="sidebar-logo-text">FunPay Hub</div>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <a href="dashboard.html" class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/></svg>
+      <span>Dashboard</span>
+    </a>
+
+    <div class="sidebar-group">
+      <a href="account.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Seller</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="account.html" class="sidebar-sub">Профиль</a>
+        <a href="lots.html" class="sidebar-sub">Лоты</a>
+        <a href="balance.html" class="sidebar-sub">Баланс</a>
+        <a href="orders.html" class="sidebar-sub">Заказы</a>
+        <a href="sales.html" class="sidebar-sub">Продажи</a>
+        <a href="customers.html" class="sidebar-sub">Покупатели</a>
+        <a href="notifications.html" class="sidebar-sub">Уведомления</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="market.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Market</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="market.html" class="sidebar-sub">Анализ рынка</a>
+        <a href="advisor.html" class="sidebar-sub">AI Советник</a>
+        <a href="compare.html" class="sidebar-sub">Сравнение</a>
+        <a href="optimal.html" class="sidebar-sub">Оптимальная цена</a>
+        <a href="competitors.html" class="sidebar-sub">Конкуренты</a>
+        <a href="heatmap.html" class="sidebar-sub">Тепловая карта</a>
+        <a href="niches.html" class="sidebar-sub">Ниши</a>
+        <a href="ratings.html" class="sidebar-sub">Рейтинги</a>
+        <a href="margin.html" class="sidebar-sub">Маржа</a>
+        <a href="suppliers.html" class="sidebar-sub">Поставщики</a>
+        </div>
+    </div>
+
+<div class="sidebar-group">
+      <a href="automation.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span>Automation</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="scheduler.html" class="sidebar-sub">Планировщик</a>
+        <a href="autoreply.html" class="sidebar-sub">Автоответы</a>
+        <a href="autodelivery.html" class="sidebar-sub">Автовыдача</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="sales.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg>
+        <span>Analytics</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="analytics.html" class="sidebar-sub">Продажи и прибыль</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="system.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg>
+        <span>System</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="plugins.html" class="sidebar-sub">Плагины</a>
+        <a href="plugins_autostart.html" class="sidebar-sub">Автостарт плагинов</a>
+        <a href="system_health.html" class="sidebar-sub">Health Check</a>
+        <a href="logs.html" class="sidebar-sub">Логи</a>
+        <a href="system.html" class="sidebar-sub">Бэкапы</a>
+      </div>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <a href="assistant.html" class="sidebar-item" style="color:#a78bfa;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2"/><path d="M2 12h20v8a2 2 0 01-2 2H4a2 2 0 01-2-2z"/><path d="M6 18h.01M10 18h.01"/></svg>
+        <span>AI Ассистент</span>
+      </a>
+      <a href="help.html" class="sidebar-item help-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>Помощь</span>
+      </a>
+      <a href="appearance.html" class="sidebar-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <span>Settings</span>
+    </a>
+  </nav>
+</aside>
+<div class="main">
+<header class="topbar">
+  <div class="topbar-title"><b>Заказы</b></div>
+  <div class="topbar-search-hint" onclick="window.cmdk && window.cmdk.open()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  <span>Поиск</span>
+  <kbd>Ctrl K</kbd>
+</div><div class="topbar-status"><span class="status-dot"></span>Система работает</div>
+</header>
+<main class="content">
+<div class="page-header">
+  <div class="page-title">Заказы</div>
+  <div class="page-subtitle">Активные и завершённые заказы</div>
+</div>
+<div class="toolbar">
+  <button class="btn btn-secondary" onclick="loadOrders()">Обновить</button>
+</div>
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr><th>ID</th><th>Лот</th><th>Покупатель</th><th>Сумма</th><th>Статус</th><th></th></tr>
+    </thead>
+    <tbody id="orders-body"><tr><td colspan="6" class="empty-state">Загрузка...</td></tr></tbody>
+  </table>
+</div>
+</main>
+</div>
+</div>
+<script src="app.js"></script>
+<script>
+async function loadOrders() {
+  const d = await window.api('/api/seller/orders');
+  const list = (d && d.orders) || d || [];
+  if (!Array.isArray(list) || !list.length) {
+    document.getElementById('orders-body').innerHTML = '<tr><td colspan="6" class="empty-state">Заказов пока нет</td></tr>';
+    return;
+  }
+  document.getElementById('orders-body').innerHTML = list.map(o => `
+    <tr>
+      <td class="mono muted">${o.id || '—'}</td>
+      <td>${o.title || o.lot_title || '—'}</td>
+      <td>${o.buyer || o.buyer_username || '—'}</td>
+      <td class="mono">${o.price ?? '—'} ${o.currency || ''}</td>
+      <td><span class="badge badge-${(o.status==='paid'||o.status==='closed')?'success':(o.status==='refund'?'danger':'info')}">${o.status || '—'}</span></td>
+      <td class="row-actions">
+        <button class="btn btn-sm btn-danger" onclick="refund('${o.id}')">Возврат</button>
+      </td>
+    </tr>
+  `).join('');
+}
+async function refund(id) {
+  if (!confirm('Сделать возврат по заказу #' + id + '?')) return;
+  const r = await fetch(`/api/seller/orders/${id}/refund`, {method:'POST'});
+  window.toast(r.ok ? 'Возврат выполнен' : 'Ошибка', r.ok ? 'success' : 'error');
+  if (r.ok) loadOrders();
+}
+loadOrders();
+</script>
+<script src="live.js"></script>
+<script src="cmdk.js"></script>
+<script src="hotkeys.js"></script>
+<script src="ai-widget.js"></script>
+</body>
+</html>
+
+

@@ -1,0 +1,18 @@
+[FunPay]
+golden_key : {{ENCRYPTED_GOLDEN_KEY}}
+user_agent : Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+autoRaise : 1
+autoResponse : 1
+autoDelivery : 1
+locale : ru
+
+[Scheduler]
+enabled : 0
+balance_interval : 300
+lots_interval : 1800
+
+[Telegram]
+enabled : 1
+
+[Other]
+language : ru

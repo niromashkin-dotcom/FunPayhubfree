@@ -1,0 +1,9 @@
+{
+    "greeting": "❤ Спасибо за заказ Telegram Stars! Пришлите username для зачисления звёзд.",
+    "request_link": "🔗 Пожалуйста, пришлите username (формат @username или t.me/username).",
+    "confirm": "⭐ Подтверждаете заказ {stars} звёзд? Отправьте 'да'.",
+    "completed": "🎉 {stars} звёзд зачислены! Спасибо за покупку.",
+    "review_reply_5star": "🙏 Спасибо за отзыв! Рады помочь с Telegram Stars!",
+    "review_reply_4star": "Благодарим за отзыв!",
+    "review_reply_1to3": "Сожалеем о ситуации. Напишите для решения."
+}

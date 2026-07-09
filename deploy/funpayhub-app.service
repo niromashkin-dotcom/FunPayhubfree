@@ -1,0 +1,18 @@
+[Unit]
+Description=FunPayHub Application Service
+After=network.target
+
+[Service]
+Type=notify
+User=funpayhub
+WorkingDirectory=/home/funpayhub/FunPayHub
+Environment="FUNPAYHUB_HEADLESS=1"
+EnvironmentFile=/home/funpayhub/.env
+ExecStart=/usr/bin/gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 30 funpayhub_main:app
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/funpayhub/app.log
+StandardError=append:/var/log/funpayhub/app.log
+
+[Install]
+WantedBy=multi-user.target

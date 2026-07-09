@@ -1,0 +1,251 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>FunPay Hub — Продажи</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="pages.css">
+<script src="theme.js"></script>
+<script src="onboarding.js"></script>
+</head>
+<body>
+<div class="aurora"></div>
+<div class="app">
+<aside class="sidebar sidebar-compact">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-mark">H</div>
+    <div class="sidebar-logo-text">FunPay Hub</div>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <a href="dashboard.html" class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/></svg>
+      <span>Dashboard</span>
+    </a>
+
+    <div class="sidebar-group">
+      <a href="account.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Seller</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="account.html" class="sidebar-sub">Профиль</a>
+        <a href="lots.html" class="sidebar-sub">Лоты</a>
+        <a href="balance.html" class="sidebar-sub">Баланс</a>
+        <a href="orders.html" class="sidebar-sub">Заказы</a>
+        <a href="sales.html" class="sidebar-sub">Продажи</a>
+        <a href="customers.html" class="sidebar-sub">Покупатели</a>
+        <a href="notifications.html" class="sidebar-sub">Уведомления</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="market.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Market</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="market.html" class="sidebar-sub">Анализ рынка</a>
+        <a href="advisor.html" class="sidebar-sub">AI Советник</a>
+        <a href="compare.html" class="sidebar-sub">Сравнение</a>
+        <a href="optimal.html" class="sidebar-sub">Оптимальная цена</a>
+        <a href="competitors.html" class="sidebar-sub">Конкуренты</a>
+        <a href="heatmap.html" class="sidebar-sub">Тепловая карта</a>
+        <a href="niches.html" class="sidebar-sub">Ниши</a>
+        <a href="ratings.html" class="sidebar-sub">Рейтинги</a>
+        <a href="margin.html" class="sidebar-sub">Маржа</a>
+        <a href="suppliers.html" class="sidebar-sub">Поставщики</a>
+      </div>
+    </div>
+
+<div class="sidebar-group">
+      <a href="automation.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span>Automation</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="scheduler.html" class="sidebar-sub">Планировщик</a>
+        <a href="autoreply.html" class="sidebar-sub">Автоответы</a>
+        <a href="autodelivery.html" class="sidebar-sub">Автовыдача</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="sales.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg>
+        <span>Analytics</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="analytics.html" class="sidebar-sub">Продажи и прибыль</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="system.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg>
+        <span>System</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="plugins.html" class="sidebar-sub">Плагины</a>
+        <a href="plugins_autostart.html" class="sidebar-sub">Автостарт плагинов</a>
+        <a href="system_health.html" class="sidebar-sub">Health Check</a>
+        <a href="logs.html" class="sidebar-sub">Логи</a>
+        <a href="system.html" class="sidebar-sub">Бэкапы</a>
+      </div>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <a href="assistant.html" class="sidebar-item" style="color:#a78bfa;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2"/><path d="M2 12h20v8a2 2 0 01-2 2H4a2 2 0 01-2-2z"/><path d="M6 18h.01M10 18h.01"/></svg>
+        <span>AI Ассистент</span>
+      </a>
+      <a href="help.html" class="sidebar-item help-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>Помощь</span>
+      </a>
+      <a href="appearance.html" class="sidebar-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <span>Settings</span>
+    </a>
+  </nav>
+</aside>
+<div class="main">
+<header class="topbar">
+  <div class="topbar-title"><b>Продажи</b></div>
+  <div class="topbar-search-hint" onclick="window.cmdk && window.cmdk.open()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  <span>Поиск</span>
+  <kbd>Ctrl K</kbd>
+</div><div class="topbar-status"><span class="status-dot"></span>Система работает</div>
+</header>
+<main class="content">
+<div class="page-header">
+  <div class="page-title">Продажи</div>
+  <div class="page-subtitle">История продаж и статистика</div>
+</div>
+<div class="metrics">
+  <div class="metric up"><div class="metric-label">День</div><div class="metric-value" id="m-today">—</div><div class="metric-sub" id="m-today-count">— заказов</div></div>
+  <div class="metric cyan"><div class="metric-label">Месяц</div><div class="metric-value" id="m-month">—</div><div class="metric-sub" id="m-month-count">— заказов</div></div>
+  <div class="metric"><div class="metric-label">Всего</div><div class="metric-value" id="m-total">—</div><div class="metric-sub" id="m-total-count">— заказов</div></div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">История продаж</div>
+  <div class="table-wrap">
+<table class="table">
+       <thead><tr><th>Дата</th><th>Лот</th><th>Покупатель</th><th>Кол-во</th><th>Сумма</th></tr></thead>
+      <tbody id="sales-body"><tr><td colspan="4" class="empty-state">Загрузка...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="chart-card">
+  <div class="chart-header">
+    <div class="chart-title">Продажи по дням</div>
+    <div class="chart-period">
+      <button class="active" onclick="setSalesRange(7, this)">7д</button>
+      <button onclick="setSalesRange(14, this)">14д</button>
+      <button onclick="setSalesRange(30, this)">30д</button>
+    </div>
+  </div>
+  <div class="chart-body"><canvas id="sales-chart"></canvas></div>
+</div>
+</main>
+</div>
+</div>
+<script src="app.js"></script>
+<script>
+async function loadSales() {
+  const d = await window.api('/api/seller/sales');
+  const list = (d && d.sales) || d || [];
+  if (d && d.stats) {
+    const dayCount = d.stats.day_count ?? 0;
+    const daySum = d.stats.day_sum ?? 0;
+    const monthCount = d.stats.month_count ?? 0;
+    const monthSum = d.stats.month_sum ?? 0;
+    const totalCount = d.stats.total_count ?? 0;
+    const totalSum = d.stats.total_sum ?? 0;
+    document.getElementById('m-today').textContent = daySum.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₽';
+    document.getElementById('m-today-count').textContent = dayCount + ' заказ' + (dayCount === 1 ? '' : dayCount < 5 ? 'а' : 'ов');
+    document.getElementById('m-month').textContent = monthSum.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₽';
+    document.getElementById('m-month-count').textContent = monthCount + ' заказ' + (monthCount === 1 ? '' : monthCount < 5 ? 'а' : 'ов');
+    document.getElementById('m-total').textContent = totalSum.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₽';
+    document.getElementById('m-total-count').textContent = totalCount + ' заказ' + (totalCount === 1 ? '' : totalCount < 5 ? 'а' : 'ов');
+  }
+  if (!Array.isArray(list) || !list.length) {
+    document.getElementById('sales-body').innerHTML = '<tr><td colspan="5" class="empty-state">Продаж пока нет</td></tr>';
+    return;
+  }
+let totalSum = 0;
+   let totalCount = 0;
+   document.getElementById('sales-body').innerHTML = list.map(s => {
+     const price = parseFloat(s.price) || 0;
+     const qty = parseInt(s.quantity) || 1;
+     totalSum += price;
+     totalCount += qty;
+     return `
+     <tr>
+       <td class="mono muted">${s.date || s.timestamp || '—'}</td>
+       <td>${s.title || '—'}</td>
+       <td>${s.buyer || '—'}</td>
+       <td class="mono">${qty} шт</td>
+       <td class="mono text-emerald">+${price.toLocaleString('ru-RU', {minimumFractionDigits: 0, maximumFractionDigits: 0})} ₽</td>
+     </tr>
+   `;
+   }).join('') + `<tr style="font-weight:bold; border-top: 2px solid var(--border);"><td colspan="3" style="text-align:right;">Заработано</td><td class="mono">${totalCount} заказов</td><td class="mono text-emerald">+${totalSum.toLocaleString('ru-RU', {minimumFractionDigits: 0, maximumFractionDigits: 0})} ₽</td></tr>`;
+ }
+loadSales();
+</script>
+<script src="live.js"></script>
+<script src="chart.min.js"></script>
+<script src="charts.js"></script>
+
+<script>
+let SALES_DATA = [];
+let SALES_DAYS = 7;
+async function loadSalesChart() {
+  const d = await window.api('/api/seller/sales');
+  SALES_DATA = (d && d.sales) || d || [];
+  renderSalesChart();
+}
+function renderSalesChart() {
+  if (!Array.isArray(SALES_DATA)) return;
+  // group by date (last N days)
+  const buckets = {};
+  const today = new Date();
+  for (let i = SALES_DAYS - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(5, 10);
+    buckets[key] = 0;
+  }
+  SALES_DATA.forEach(s => {
+    const dt = (s.date || s.timestamp || '').toString().slice(5, 10);
+    if (buckets.hasOwnProperty(dt)) {
+      buckets[dt] += parseFloat(s.price) || 1;
+    }
+  });
+  const labels = Object.keys(buckets);
+  const data = Object.values(buckets);
+  window.makeBarChart('sales-chart', labels, data, { label: 'Сумма' });
+}
+function setSalesRange(n, btn) {
+  SALES_DAYS = n;
+  document.querySelectorAll('.chart-period button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSalesChart();
+}
+setTimeout(loadSalesChart, 500);
+</script>
+<script src="cmdk.js"></script>
+<script src="hotkeys.js"></script>
+<script src="ai-widget.js"></script>
+</body>
+</html>

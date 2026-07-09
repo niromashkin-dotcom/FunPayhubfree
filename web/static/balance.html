@@ -1,0 +1,282 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>FunPay Hub — Баланс</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="pages.css">
+<script src="theme.js"></script>
+<script src="onboarding.js"></script>
+</head>
+<body>
+<div class="aurora"></div>
+<div class="app">
+<aside class="sidebar sidebar-compact">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-mark">H</div>
+    <div class="sidebar-logo-text">FunPay Hub</div>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <a href="dashboard.html" class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/></svg>
+      <span>Dashboard</span>
+    </a>
+
+    <div class="sidebar-group">
+      <a href="account.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Seller</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="account.html" class="sidebar-sub">Профиль</a>
+        <a href="lots.html" class="sidebar-sub">Лоты</a>
+        <a href="balance.html" class="sidebar-sub">Баланс</a>
+        <a href="orders.html" class="sidebar-sub">Заказы</a>
+        <a href="sales.html" class="sidebar-sub">Продажи</a>
+        <a href="customers.html" class="sidebar-sub">Покупатели</a>
+        <a href="notifications.html" class="sidebar-sub">Уведомления</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="market.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Market</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="market.html" class="sidebar-sub">Анализ рынка</a>
+        <a href="advisor.html" class="sidebar-sub">AI Советник</a>
+        <a href="compare.html" class="sidebar-sub">Сравнение</a>
+        <a href="optimal.html" class="sidebar-sub">Оптимальная цена</a>
+        <a href="competitors.html" class="sidebar-sub">Конкуренты</a>
+        <a href="heatmap.html" class="sidebar-sub">Тепловая карта</a>
+        <a href="niches.html" class="sidebar-sub">Ниши</a>
+        <a href="ratings.html" class="sidebar-sub">Рейтинги</a>
+        <a href="margin.html" class="sidebar-sub">Маржа</a>
+        <a href="suppliers.html" class="sidebar-sub">Поставщики</a>
+      </div>
+    </div>
+
+<div class="sidebar-group">
+      <a href="automation.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span>Automation</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="scheduler.html" class="sidebar-sub">Планировщик</a>
+        <a href="autoreply.html" class="sidebar-sub">Автоответы</a>
+        <a href="autodelivery.html" class="sidebar-sub">Автовыдача</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="sales.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg>
+        <span>Analytics</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="analytics.html" class="sidebar-sub">Продажи и прибыль</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="system.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg>
+        <span>System</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="plugins.html" class="sidebar-sub">Плагины</a>
+        <a href="plugins_autostart.html" class="sidebar-sub">Автостарт плагинов</a>
+        <a href="system_health.html" class="sidebar-sub">Health Check</a>
+        <a href="logs.html" class="sidebar-sub">Логи</a>
+        <a href="system.html" class="sidebar-sub">Бэкапы</a>
+      </div>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <a href="assistant.html" class="sidebar-item" style="color:#a78bfa;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2"/><path d="M2 12h20v8a2 2 0 01-2 2H4a2 2 0 01-2-2z"/><path d="M6 18h.01M10 18h.01"/></svg>
+        <span>AI Ассистент</span>
+      </a>
+      <a href="help.html" class="sidebar-item help-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>Помощь</span>
+      </a>
+      <a href="appearance.html" class="sidebar-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <span>Settings</span>
+    </a>
+  </nav>
+</aside>
+<div class="main">
+<header class="topbar">
+  <div class="topbar-title"><b>Баланс</b></div>
+  <div class="topbar-search-hint" onclick="window.cmdk && window.cmdk.open()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  <span>Поиск</span>
+  <kbd>Ctrl K</kbd>
+</div><div class="topbar-status"><span class="status-dot"></span>Система работает</div>
+</header>
+<main class="content">
+<div class="page-header">
+  <div class="page-title">Баланс</div>
+  <div class="page-subtitle">Доступный баланс и история операций</div>
+</div>
+<div class="metrics">
+  <div class="metric cyan"><div class="metric-label">Текущий баланс</div><div class="metric-value" id="m-current">—</div><div class="metric-sub" id="m-current-cur"></div></div>
+  <div class="metric up"><div class="metric-label">Доступно</div><div class="metric-value" id="m-avail">—</div></div>
+  <div class="metric"><div class="metric-label">Заморожено</div><div class="metric-value" id="m-frozen">—</div></div>
+  <div class="metric"><div class="metric-label">Обновлено</div><div class="metric-value" id="m-updated" style="font-size:13px;">—</div></div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">История изменений</div>
+  <div class="toolbar">
+    <button class="btn btn-secondary" onclick="loadBalance()">Обновить</button>
+    <button class="btn btn-danger" onclick="clearHistory()">Очистить историю</button>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Дата</th><th>Операция</th><th>Сумма</th><th>Баланс после</th></tr></thead>
+      <tbody id="hist-body"><tr><td colspan="3" class="empty-state">Загрузка...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="chart-card">
+  <div class="chart-header">
+    <div class="chart-title">График баланса</div>
+    <div class="chart-period">
+      <button class="active" onclick="setBalRange('24h', this)">24ч</button>
+      <button onclick="setBalRange('7d', this)">7д</button>
+      <button onclick="setBalRange('30d', this)">30д</button>
+      <button onclick="setBalRange('all', this)">Все</button>
+    </div>
+  </div>
+  <div class="chart-body"><canvas id="balance-chart"></canvas></div>
+</div>
+</main>
+</div>
+</div>
+<script src="app.js"></script>
+<script>
+async function loadBalance() {
+  const b = await window.api('/api/seller/balance/full');
+  if (b) {
+    const bal = (b.balance && typeof b.balance === 'object') ? b.balance : (typeof b === 'object' ? b : {});
+    const total = bal.total_rub ?? 0;
+    let avail = bal.available_rub ?? bal.total_rub ?? 0;
+    const frozen = bal.frozen ?? 0;
+    const updatedAt = b.updated_at ?? bal.updated_at ?? null;
+    if (!total && bal.currencies && typeof bal.currencies === 'object') {
+      const firstCur = Object.values(bal.currencies)[0];
+      if (firstCur && firstCur.amount) avail = firstCur.amount;
+    }
+    document.getElementById('m-current').textContent = total ? Number(total).toLocaleString('ru-RU', {minimumFractionDigits: 0, maximumFractionDigits: 0}) + ' ₽' : '—';
+    document.getElementById('m-current-cur').textContent = total ? 'RUB' : (bal.currencies ? Object.keys(bal.currencies)[0] : 'RUB');
+    document.getElementById('m-avail').textContent = avail ? Number(avail).toLocaleString('ru-RU', {minimumFractionDigits: 0, maximumFractionDigits: 0}) + ' ₽' : '0 ₽';
+    document.getElementById('m-frozen').textContent = frozen > 0 ? Number(frozen).toLocaleString('ru-RU', {minimumFractionDigits: 0, maximumFractionDigits: 0}) + ' ₽' : '0 ₽';
+    document.getElementById('m-updated').textContent = updatedAt ? new Date(updatedAt * 1000).toLocaleString('ru-RU', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}).replace(',', '') : '—';
+  } else {
+    document.getElementById('m-current').textContent = '—';
+    document.getElementById('m-avail').textContent = '—';
+    document.getElementById('m-frozen').textContent = '—';
+    document.getElementById('m-updated').textContent = '—';
+  }
+
+  const h = await window.api('/api/seller/balance/history');
+  const list = (h && h.history) || h || [];
+  if (!list.length) {
+    document.getElementById('hist-body').innerHTML = '<tr><td colspan="4" class="empty-state">История пуста</td></tr>';
+    return;
+  }
+  let prevAvail = null;
+  document.getElementById('hist-body').innerHTML = list.slice().reverse().map(row => {
+    let ts = row.timestamp || row.date || 0;
+    let dateStr;
+    if (ts) {
+      const d = typeof ts === 'string' ? new Date(ts) : new Date(ts * 1000);
+      const pad = n => String(n).padStart(2, '0');
+      dateStr = pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    } else {
+      dateStr = '—';
+    }
+    const avail = parseFloat(row.available_rub) || 0;
+    const delta = prevAvail !== null ? avail - prevAvail : 0;
+    prevAvail = avail;
+    let op, sumStr;
+    if (delta > 0) {
+      op = 'Пополнение';
+      sumStr = '+' + delta.toLocaleString('ru-RU', {minimumFractionDigits: 0, maximumFractionDigits: 0}) + ' ₽';
+    } else if (delta < 0) {
+      op = 'Списание';
+      sumStr = delta.toLocaleString('ru-RU', {minimumFractionDigits: 0, maximumFractionDigits: 0}) + ' ₽';
+    } else {
+      op = 'Без изменений';
+      sumStr = '0 ₽';
+    }
+    return `<tr>
+      <td class="mono muted">${dateStr}</td>
+      <td>${op}</td>
+      <td class="mono ${delta > 0 ? 'text-emerald' : (delta < 0 ? 'text-rose' : '')}">${sumStr}</td>
+      <td class="mono">${avail.toLocaleString('ru-RU', {minimumFractionDigits: 0, maximumFractionDigits: 0})} ₽</td>
+    </tr>`;
+  }).join('');
+}
+async function clearHistory() {
+  if (!confirm('Очистить всю историю баланса?')) return;
+  await fetch('/api/seller/balance/history', {method:'DELETE'});
+  window.toast('История очищена', 'info');
+  loadBalance();
+}
+loadBalance();
+</script>
+<script src="live.js"></script>
+<script src="chart.min.js"></script>
+<script src="charts.js"></script>
+
+<script>
+let BAL_HIST = [];
+let BAL_RANGE = '24h';
+async function loadBalanceChart() {
+  const h = await window.api('/api/seller/balance/history');
+  BAL_HIST = (h && h.history) || h || [];
+  renderBalChart();
+}
+function renderBalChart() {
+  if (!Array.isArray(BAL_HIST) || !BAL_HIST.length) return;
+  const now = Date.now();
+  const cutoff = BAL_RANGE === '24h' ? now - 86400000
+              : BAL_RANGE === '7d'  ? now - 7*86400000
+              : BAL_RANGE === '30d' ? now - 30*86400000
+              : 0;
+  const filtered = BAL_HIST.filter(p => {
+    const t = Date.parse(p.timestamp || p.time || '');
+    return isNaN(t) || t >= cutoff;
+  });
+  const labels = filtered.map(p => (p.timestamp || p.time || '').toString().slice(11, 16));
+  const data = filtered.map(p => parseFloat(p.balance) || 0);
+  window.makeLineChart('balance-chart', labels, data, { label: 'Баланс' });
+}
+function setBalRange(r, btn) {
+  BAL_RANGE = r;
+  document.querySelectorAll('.chart-period button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBalChart();
+}
+setTimeout(loadBalanceChart, 500);
+setInterval(loadBalanceChart, 30000);
+</script>
+<script src="cmdk.js"></script>
+<script src="hotkeys.js"></script>
+<script src="ai-widget.js"></script>
+</body>
+</html>

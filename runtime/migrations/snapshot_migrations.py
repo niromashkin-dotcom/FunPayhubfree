@@ -1,0 +1,2 @@
+# runtime/migrations/snapshot_migrations.py
+# (Р·Р°РіР»СѓС€РєР°)

@@ -1,0 +1,74 @@
+{
+  "enabled": true,
+  "priority": 10,
+  "config_version": 1,
+  "api_key": "{{AUTOSMM_API_KEY}}",
+  "ask_confirmation": true,
+  "auto_refund": true,
+  "dry_run": false,
+  "check_interval_minutes": 5,
+  "min_balance_alert": 50,
+  "msg_ask_link": "❤️ Спасибо за оплату!\n\nПришлите ссылку на профиль/канал/публикацию для накрутки.\n\nПоддерживаемые сайты: VK, Telegram, Instagram, TikTok, YouTube и др.",
+  "msg_confirm": "📋 Проверьте данные:\n\n🔗 Ссылка: {link}\n📊 Услуга: {service_name}\n🔢 Количество: {quantity}\n\n⚠️ Если всё верно — отправьте 'да' для подтверждения.\nЕсли ссылка ошибочная — пришлите новую.",
+  "msg_order_created": "✅ Заказ создан! ID: {twi_id}\n\n⏳ Выполнение займёт несколько часов. Я уведомлю вас, когда всё будет готово.\n\n📊 Услуга: {service_name}\n🔢 Количество: {quantity}",
+  "msg_completed": "🎉 Заказ выполнен!\n\n📊 Услуга: {service_name}\n✅ Выдано: {delivered} из {quantity}\n\nСпасибо за покупку! Будем рады отзыву ⭐",
+  "allowed_domains": [
+    "vk.com",
+    "vk.ru",
+    "t.me",
+    "telegram.me",
+    "instagram.com",
+    "tiktok.com",
+    "youtube.com",
+    "youtu.be",
+    "twitter.com",
+    "x.com",
+    "twitch.tv",
+    "facebook.com",
+    "ok.ru",
+    "discord.gg",
+    "discord.com",
+    "boosty.to"
+  ],
+  "lot_mapping": {
+    "craft": {
+      "name": "Craft (Ibox)",
+      "marker": "[IB#",
+      "supplier": "twiboost",
+      "category": "craft_smm",
+      "min_price": 10,
+      "max_price": 500,
+      "default_quantity": 100
+    },
+    "sell_clarity": {
+      "name": "Sell Clarity",
+      "marker": "[SC#",
+      "supplier": "twiboost",
+      "category": "smm",
+      "min_price": 5,
+      "max_price": 1000,
+      "default_quantity": 50
+    },
+    "vast_sounds": {
+      "name": "Vast Sounds",
+      "marker": "[VS#",
+      "supplier": "twiboost",
+      "category": "smm",
+      "min_price": 20,
+      "max_price": 300,
+      "default_quantity": 100
+    },
+    "steam_dlcs": {
+      "name": "Steam DLCs",
+      "marker": "[ST#",
+      "supplier": "twiboost",
+      "category": "steam",
+      "min_price": 50,
+      "max_price": 5000,
+      "default_quantity": 1
+    }
+  },
+  "api_url": "{{AUTOSMM_API_URL}}",
+  "test_mode": false,
+  "test_chat_id": "users-19952092-20188266"
+}

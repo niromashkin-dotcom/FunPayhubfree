@@ -1,0 +1,619 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>FunPay Hub — Operating Platform</title>
+<link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
+<script src="onboarding.js"></script>
+<link rel="stylesheet" href="pages.css">
+</head>
+<body>
+
+<div class="aurora"></div>
+<div class="aurora-layer aurora-layer-1"></div>
+<div class="aurora-layer aurora-layer-2"></div>
+<div class="aurora-layer aurora-layer-3"></div>
+
+<div class="app">
+
+  <aside class="sidebar sidebar-compact">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-mark">H</div>
+    <div class="sidebar-logo-text">FunPay Hub</div>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <a href="dashboard.html" class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/></svg>
+      <span>Dashboard</span>
+    </a>
+
+    <div class="sidebar-group">
+      <a href="account.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Seller</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="account.html" class="sidebar-sub">Профиль</a>
+        <a href="lots.html" class="sidebar-sub">Лоты</a>
+        <a href="balance.html" class="sidebar-sub">Баланс</a>
+        <a href="orders.html" class="sidebar-sub">Заказы</a>
+        <a href="sales.html" class="sidebar-sub">Продажи</a>
+        <a href="customers.html" class="sidebar-sub">Покупатели</a>
+        <a href="notifications.html" class="sidebar-sub">Уведомления</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="market.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Market</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="market.html" class="sidebar-sub">Анализ рынка</a>
+        <a href="advisor.html" class="sidebar-sub">AI Советник</a>
+        <a href="compare.html" class="sidebar-sub">Сравнение</a>
+        <a href="optimal.html" class="sidebar-sub">Оптимальная цена</a>
+        <a href="competitors.html" class="sidebar-sub">Конкуренты</a>
+        <a href="heatmap.html" class="sidebar-sub">Тепловая карта</a>
+        <a href="niches.html" class="sidebar-sub">Ниши</a>
+        <a href="ratings.html" class="sidebar-sub">Рейтинги</a>
+        <a href="margin.html" class="sidebar-sub">Маржа</a>
+        <a href="suppliers.html" class="sidebar-sub">Поставщики</a>
+      </div>
+    </div>
+
+<div class="sidebar-group">
+      <a href="automation.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span>Automation</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="scheduler.html" class="sidebar-sub">Планировщик</a>
+        <a href="autoreply.html" class="sidebar-sub">Автоответы</a>
+        <a href="autodelivery.html" class="sidebar-sub">Автовыдача</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="sales.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg>
+        <span>Analytics</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="analytics.html" class="sidebar-sub">Продажи и прибыль</a>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <a href="system.html" class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg>
+        <span>System</span>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>
+      </a>
+      <div class="sidebar-submenu">
+        <a href="plugins.html" class="sidebar-sub">Плагины</a>
+        <a href="plugins_autostart.html" class="sidebar-sub">Автостарт плагинов</a>
+        <a href="system_health.html" class="sidebar-sub">Health Check</a>
+        <a href="logs.html" class="sidebar-sub">Логи</a>
+        <a href="system.html" class="sidebar-sub">Бэкапы</a>
+      </div>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <a href="assistant.html" class="sidebar-item" style="color:#a78bfa;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="8" rx="2"/><path d="M2 12h20v8a2 2 0 01-2 2H4a2 2 0 01-2-2z"/><path d="M6 18h.01M10 18h.01"/></svg>
+        <span>AI Ассистент</span>
+      </a>
+      <a href="help.html" class="sidebar-item help-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>Помощь</span>
+      </a>
+      <a href="appearance.html" class="sidebar-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <span>Settings</span>
+    </a>
+  </nav>
+</aside>
+
+  <div class="main">
+
+    <header class="topbar">
+      <div class="topbar-title"><b>Dashboard</b></div>
+      <div class="topbar-search-hint" onclick="window.cmdk && window.cmdk.open()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  <span>Поиск</span>
+  <kbd>Ctrl K</kbd>
+</div><div class="topbar-status">
+        <span class="status-dot" id="live-dot"></span>
+        <span id="live-text">Live</span>
+      </div>
+    </header>
+
+    <main class="content content-wide">
+
+      <section class="dash-hero-v2">
+
+        <!-- Brand small plate -->
+        <div class="brand-row">
+          <div class="brand-plate">
+            <div class="brand-plate-mark">H</div>
+            <span class="brand-plate-text">FunPay Hub</span>
+            <span class="brand-plate-sub">Seller OS · v1.0</span>
+          </div>
+        </div>
+
+        <!-- Main: seller card + KPI -->
+        <div class="hero-main">
+
+          <!-- Seller profile (left) -->
+          <div id="seller-block">
+            <div class="seller-empty">
+              <div class="seller-empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div>
+                <div class="seller-empty-text"><strong>Аккаунт не подключён</strong></div>
+                <a href="account.html" class="seller-empty-link">Подключить FunPay →</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI (right) -->
+          <div class="kpi-row-tight">
+            <div class="kpi-tight">
+              <div class="kpi-tight-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                Balance
+              </div>
+              <div class="kpi-tight-value" id="kpi-balance">—</div>
+              <div class="kpi-tight-sub" id="kpi-balance-sub">текущий</div>
+            </div>
+            <div class="kpi-tight">
+              <div class="kpi-tight-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                Orders Today
+              </div>
+              <div class="kpi-tight-value" id="kpi-orders">—</div>
+              <div class="kpi-tight-sub" id="kpi-orders-sub">за 24 часа</div>
+            </div>
+            <div class="kpi-tight up">
+              <div class="kpi-tight-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 2 5-6"/></svg>
+                Revenue Today
+              </div>
+              <div class="kpi-tight-value" id="kpi-revenue">—</div>
+              <div class="kpi-tight-sub" id="kpi-revenue-sub">оборот</div>
+            </div>
+            <div class="kpi-tight up">
+              <div class="kpi-tight-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                Profit Today
+              </div>
+              <div class="kpi-tight-value" id="kpi-profit">—</div>
+              <div class="kpi-tight-sub" id="kpi-profit-sub">чистая прибыль</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="dash-performance">
+        <div class="perf-header">
+          <div>
+            <div class="perf-title">Performance</div>
+            <div class="perf-subtitle">Активность за выбранный период</div>
+          </div>
+          <div class="chart-period">
+            <button class="active" data-range="24h">24h</button>
+            <button data-range="7d">7d</button>
+            <button data-range="30d">30d</button>
+          </div>
+        </div>
+        <div class="perf-chart">
+          <canvas id="dash-chart"></canvas>
+        </div>
+      </section>
+
+      <section class="dash-ops">
+
+        <div class="ops-card">
+          <div class="ops-card-head">
+            <div>
+              <div class="ops-card-title">Recent Orders</div>
+              <div class="ops-card-sub">Свежие заказы</div>
+            </div>
+            <a href="orders.html" class="ops-card-link">Все</a>
+          </div>
+          <div class="ops-card-body" id="ops-orders">
+            <div class="ops-empty">Загрузка...</div>
+          </div>
+        </div>
+
+        <div class="ops-card">
+          <div class="ops-card-head">
+            <div>
+              <div class="ops-card-title">Market Alerts</div>
+              <div class="ops-card-sub">События рынка</div>
+            </div>
+          </div>
+          <div class="ops-card-body" id="ops-alerts">
+            <div class="ops-empty">Загрузка...</div>
+          </div>
+        </div>
+
+        <div class="ops-card">
+          <div class="ops-card-head">
+            <div>
+              <div class="ops-card-title">AI Recommendations</div>
+              <div class="ops-card-sub">Подсказки советника</div>
+            </div>
+            <a href="advisor.html" class="ops-card-link">Все</a>
+          </div>
+          <div class="ops-card-body" id="ops-ai">
+            <div class="ops-empty">Загрузка...</div>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="dash-actions">
+        <a href="lots.html" class="quick-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+          <span>Open Lots</span>
+        </a>
+        <a href="orders.html" class="quick-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+          <span>Open Orders</span>
+        </a>
+        <a href="market.html" class="quick-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Market Scan</span>
+        </a>
+        <a href="optimal.html" class="quick-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span>Pricing</span>
+        </a>
+        <a href="automation.html" class="quick-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span>Automation</span>
+        </a>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="chart.min.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+<script src="live.js"></script>
+
+<script>
+(function() {
+
+  async function loadKpi() {
+    try {
+      const b = await window.api('/api/seller/balance/full');
+      if (b) {
+        // FunPay returns multi-currency: { available_rub, available_eur, available_usd, balance, currency, ... }
+        function pickNumber(...vals) {
+          for (const v of vals) {
+            if (v == null) continue;
+            if (typeof v === 'number') return v;
+            if (typeof v === 'string' && v.trim() !== '' && !isNaN(parseFloat(v))) return parseFloat(v);
+            if (typeof v === 'object') {
+              if (v.amount != null) return pickNumber(v.amount);
+              if (v.value  != null) return pickNumber(v.value);
+            }
+          }
+          return null;
+        }
+
+        // Prefer RUB then USD then EUR then generic "balance" field
+        const rub = pickNumber(b.available_rub, b.rub, b.balance_rub);
+        const usd = pickNumber(b.available_usd, b.usd, b.balance_usd);
+        const eur = pickNumber(b.available_eur, b.eur, b.balance_eur);
+        const generic = pickNumber(b.balance, b.amount, b.available);
+
+        let mainVal, mainCur;
+        if (rub != null) { mainVal = rub; mainCur = '₽'; }
+        else if (usd != null) { mainVal = usd; mainCur = '$'; }
+        else if (eur != null) { mainVal = eur; mainCur = '€'; }
+        else if (generic != null) { mainVal = generic; mainCur = (typeof b.currency === 'string' ? b.currency : ''); }
+        else { mainVal = 0; mainCur = ''; }
+
+        document.getElementById('kpi-balance').textContent =
+          (Number.isInteger(mainVal) ? mainVal : mainVal.toFixed(2)) + ' ' + mainCur;
+
+        // Sub-line: other currencies
+        const extras = [];
+        if (mainCur !== '$' && usd != null) extras.push(usd.toFixed(2) + '$');
+        if (mainCur !== '€' && eur != null) extras.push(eur.toFixed(2) + '€');
+        if (mainCur !== '₽' && rub != null) extras.push(rub.toFixed(2) + '₽');
+
+        document.getElementById('kpi-balance-sub').textContent =
+          extras.length ? extras.join(' · ') : 'доступно';
+      }
+    } catch(e) {}
+
+    try {
+      const o = await window.api('/api/seller/orders');
+      const list = (o && o.orders) || o || [];
+      const today = new Date().toISOString().slice(0, 10);
+      const todayOrders = list.filter(x =>
+        ((x.timestamp || x.date || '') + '').startsWith(today));
+      document.getElementById('kpi-orders').textContent = todayOrders.length;
+      document.getElementById('kpi-orders-sub').textContent = 'всего: ' + list.length;
+    } catch(e) {}
+
+    try {
+      const s = await window.api('/api/seller/sales');
+      const list = (s && s.sales) || s || [];
+      const today = new Date().toISOString().slice(0, 10);
+      let rev = 0;
+      list.forEach(x => {
+        if (((x.date || x.timestamp || '') + '').startsWith(today)) {
+          rev += parseFloat(x.price) || 0;
+        }
+      });
+      document.getElementById('kpi-revenue').textContent = rev.toFixed(2);
+
+      const m = await window.api('/api/margin/overview');
+      if (m && m.today_profit != null) {
+        document.getElementById('kpi-profit').textContent = m.today_profit;
+      } else {
+        document.getElementById('kpi-profit').textContent = (rev * 0.85).toFixed(2);
+      }
+    } catch(e) {}
+  }
+
+  let CHART_RANGE = '24h';
+  let ORDERS_CACHE = [];
+
+  async function loadActivity() {
+    try {
+      const o = await window.api('/api/seller/orders');
+      ORDERS_CACHE = (o && o.orders) || o || [];
+      renderActivity();
+    } catch(e) {}
+  }
+
+  function renderActivity() {
+    const now = new Date();
+    let buckets, labels;
+
+    if (CHART_RANGE === '24h') {
+      buckets = Array(24).fill(0);
+      labels = [];
+      for (let i = 23; i >= 0; i--) {
+        const d = new Date(now);
+        d.setHours(d.getHours() - i);
+        labels.push(d.getHours() + ':00');
+      }
+      ORDERS_CACHE.forEach(o => {
+        const t = Date.parse(o.timestamp || o.date || '');
+        if (isNaN(t)) return;
+        const diffH = Math.floor((now - t) / 3600000);
+        if (diffH >= 0 && diffH < 24) buckets[23 - diffH]++;
+      });
+    } else if (CHART_RANGE === '7d') {
+      buckets = Array(7).fill(0);
+      labels = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        labels.push(d.toISOString().slice(5, 10));
+      }
+      ORDERS_CACHE.forEach(o => {
+        const t = Date.parse(o.timestamp || o.date || '');
+        if (isNaN(t)) return;
+        const diffD = Math.floor((now - t) / 86400000);
+        if (diffD >= 0 && diffD < 7) buckets[6 - diffD]++;
+      });
+    } else {
+      buckets = Array(30).fill(0);
+      labels = [];
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        labels.push(d.toISOString().slice(5, 10));
+      }
+      ORDERS_CACHE.forEach(o => {
+        const t = Date.parse(o.timestamp || o.date || '');
+        if (isNaN(t)) return;
+        const diffD = Math.floor((now - t) / 86400000);
+        if (diffD >= 0 && diffD < 30) buckets[29 - diffD]++;
+      });
+    }
+
+    if (window.makeLineChart) {
+      window.makeLineChart('dash-chart', labels, buckets, { label: 'Заказов' });
+    }
+  }
+
+  document.querySelectorAll('.chart-period button[data-range]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.chart-period button[data-range]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      CHART_RANGE = btn.dataset.range;
+      renderActivity();
+    });
+  });
+
+  async function loadOps() {
+    try {
+      const o = await window.api('/api/seller/orders');
+      const list = ((o && o.orders) || o || []).slice(0, 5);
+      const el = document.getElementById('ops-orders');
+      if (!list.length) {
+        el.innerHTML = '<div class="ops-empty">Заказов пока нет</div>';
+      } else {
+        el.innerHTML = list.map(x => `
+          <div class="ops-row">
+            <div class="ops-row-main">
+              <div class="ops-row-title">${(x.title || x.lot_title || '—')}</div>
+              <div class="ops-row-sub">${x.buyer || x.buyer_username || '—'}</div>
+            </div>
+            <div class="ops-row-meta">
+              <div class="ops-row-value">${x.price ?? '—'}</div>
+              <span class="badge badge-${(x.status==='paid'||x.status==='closed')?'success':(x.status==='refund'?'danger':'info')}">${x.status || '—'}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    } catch(e) {}
+
+    try {
+      const a = await window.api('/api/market/alerts');
+      const list = ((a && a.alerts) || a || []).slice(0, 5);
+      const el = document.getElementById('ops-alerts');
+      if (!list.length) {
+        el.innerHTML = '<div class="ops-empty">Нет алертов</div>';
+      } else {
+        el.innerHTML = list.map(x => `
+          <div class="ops-row">
+            <div class="ops-row-main">
+              <div class="ops-row-title">${x.message || x.title || '—'}</div>
+              <div class="ops-row-sub">${x.timestamp || ''}</div>
+            </div>
+            <span class="badge badge-warn">${x.type || 'alert'}</span>
+          </div>
+        `).join('');
+      }
+    } catch(e) {}
+
+    try {
+      const r = await window.api('/api/ai/recommendations');
+      const list = ((r && r.recommendations) || r || []).slice(0, 5);
+      const el = document.getElementById('ops-ai');
+      if (!list.length) {
+        el.innerHTML = '<div class="ops-empty">Нет рекомендаций</div>';
+      } else {
+        el.innerHTML = list.map(x => `
+          <div class="ops-row">
+            <div class="ops-row-main">
+              <div class="ops-row-title">${x.title || x.type || '—'}</div>
+              <div class="ops-row-sub">${x.message || x.description || ''}</div>
+            </div>
+            ${x.action ? `<span class="badge badge-info">${x.action}</span>` : ''}
+          </div>
+        `).join('');
+      }
+    } catch(e) {}
+  }
+
+  setTimeout(() => { loadKpi(); loadActivity(); loadOps(); }, 400);
+  setInterval(loadKpi, 15000);
+  setInterval(loadActivity, 60000);
+  setInterval(loadOps, 20000);
+
+})();
+</script>
+
+
+<script>
+// ===== SELLER_PROFILE_LOADER v2 — uses FunPay proxy =====
+(function() {
+
+  async function loadSeller() {
+    try {
+      const s = await window.api('/api/seller/status');
+      const block = document.getElementById('seller-block');
+      if (!block) return;
+
+      const connected = s && (s.has_credentials || s.connected);
+      if (!connected) {
+        block.innerHTML = `
+          <div class="seller-empty">
+            <div class="seller-empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div>
+              <div class="seller-empty-text"><strong>Аккаунт не подключён</strong></div>
+              <a href="account.html" class="seller-empty-link">Подключить FunPay →</a>
+            </div>
+          </div>`;
+        return;
+      }
+
+      // Get base data from local API
+      const o = await window.api('/api/seller/overview');
+
+      let name    = (o && (o.username || o.name)) || 'Продавец';
+      let rating  = (o && (o.rating ?? o.avg_rating ?? o.score)) ?? null;
+      let reviews = (o && (o.reviews_count ?? o.reviews ?? o.feedback_count)) ?? 0;
+      let userId  = (o && (o.user_id || o.id || o.uid)) || null;
+      let avatar  = (o && (o.avatar_url || o.avatar || o.photo)) || null;
+      let isOnline = (o && o.online !== false);
+
+      // FETCH richer data via FunPay proxy
+      try {
+        const proxy = await window.api('/api/funpay/me');
+        if (proxy && proxy.ok && proxy.data) {
+          const d = proxy.data;
+          if (d.username && !o?.username) name = d.username;
+          if (d.avatar_url) avatar = d.avatar_url;
+          if (d.rating != null) rating = d.rating;
+          if (d.reviews_count != null) reviews = d.reviews_count;
+          if (d.online != null) isOnline = d.online;
+          if (d.user_id) userId = d.user_id;
+        }
+      } catch(e) {
+        console.warn('funpay proxy failed', e);
+      }
+
+      const initial = name.charAt(0).toUpperCase();
+      const profileUrl = userId ? `https://funpay.com/users/${userId}/` : 'https://funpay.com/';
+
+      const avatarHtml = avatar
+        ? `<img src="${avatar}" alt="${name}" referrerpolicy="no-referrer" onerror="this.style.display='none';this.parentNode.textContent='${initial}'">`
+        : initial;
+
+      const ratingHtml = (rating != null)
+        ? `<span class="seller-rating">
+             <svg viewBox="0 0 24 24"><polygon points="12 2 15 8.5 22 9.3 17 14 18.2 21 12 17.8 5.8 21 7 14 2 9.3 9 8.5 12 2"/></svg>
+             ${Number(rating).toFixed(2)}
+           </span>` : '';
+
+      const reviewsHtml = (reviews != null)
+        ? `<span class="seller-reviews">${reviews} отзывов</span>` : '';
+
+      block.innerHTML = `
+        <div class="seller-card">
+          <div class="seller-avatar ${isOnline ? 'online' : ''}">${avatarHtml}</div>
+          <div class="seller-info">
+            <div class="seller-name">${name}</div>
+            <div class="seller-meta">
+              ${ratingHtml}
+              ${reviewsHtml}
+              <span class="seller-status-chip ${isOnline ? '' : 'offline'}">
+                <span class="dot"></span>
+                ${isOnline ? 'Онлайн' : 'Офлайн'}
+              </span>
+              <a href="${profileUrl}" target="_blank" class="seller-link">FunPay ↗</a>
+            </div>
+          </div>
+        </div>`;
+    } catch(e) {
+      console.warn('seller load failed', e);
+    }
+  }
+  window.__loadSeller = loadSeller;
+  setTimeout(loadSeller, 600);
+  setInterval(loadSeller, 60000);
+})();
+</script>
+<script src="cmdk.js"></script>
+<script src="hotkeys.js"></script>
+<script src="ai-widget.js"></script>
+</body>
+</html>
+

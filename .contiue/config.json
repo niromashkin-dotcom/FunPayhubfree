@@ -1,0 +1,17 @@
+{
+  "models": [
+    {
+      "title": "Qwen Coder",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:7b",
+      "apiBase": "http://127.0.0.1:11434"
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Qwen Autocomplete",
+    "provider": "ollama",
+    "model": "qwen2.5-coder:7b",
+    "apiBase": "http://127.0.0.1:11434"
+  },
+  "systemMessage": "Ты кодер нашего проекта FunPay Cardinal. Работаешь строго по архитектуре. Не ломай State Contract. Все изменения только безопасные."
+}

@@ -1,0 +1,33 @@
+# plugins/test_plugin.py
+from plugins.plugin_base import PluginBase
+
+class TestPlugin(PluginBase):
+    PLUGIN_INFO = {
+        "name": "Test Plugin",
+        "version": "1.0.0",
+        "author": "FunPay Hub",
+        "description": "Тестовый плагин для отладки"
+    }
+    
+    def on_load(self):
+        default_config = {
+            "enabled": True,
+            "log_balance": True,
+            "log_lots": False
+        }
+        self.load_config(default_config)
+        print(f"[TestPlugin] ✅ Загружен")
+        print(f"[TestPlugin] Конфиг: {self.config}")
+
+    def on_event(self, event_name, data):
+        if not self.enabled:
+            return
+        
+        if event_name == "balance_updated" and self.config.get("log_balance", True):
+            print(f"[TestPlugin] 💰 Баланс: {data}")
+        elif event_name == "lots_updated" and self.config.get("log_lots", False):
+            count = len(data) if data else 0
+            print(f"[TestPlugin] 📦 Лотов: {count}")
+
+    def on_unload(self):
+        print("[TestPlugin] 🔴 Выгружен")
