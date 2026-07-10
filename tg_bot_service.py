@@ -879,7 +879,7 @@ def main():
         logger.error(f"Failed to connect to Telegram API: {e}")
         sys.exit(1)
 
-    # Удаляем webhook (на всякий случай)
+    # Удаляем webhook (на всяний случай)
     try:
         bot.remove_webhook()
         logger.info("Webhook removed")
@@ -892,9 +892,6 @@ def main():
         logger.info("✅ Hub is already running")
     else:
         logger.info("ℹ️ Hub is not running. Use Start button.")
-
-    # Запускаем ping server в фоне
-    _start_ping_server()
 
     # Обработчик ошибок polling
     def handle_polling_exception(exception):
@@ -919,14 +916,33 @@ def main():
         time.sleep(5)
         return True
 
-    # Запускаем polling с обработчиком ошибок
-    logger.info("Starting infinity_polling...")
-    bot.infinity_polling(
-        exception_handler=handle_polling_exception,
-        timeout=60,
-        long_polling_timeout=60,
-        allowed_updates=['message', 'callback_query']
+    # Запускаем polling в отдельном потоке
+    logger.info("Starting infinity_polling in background thread...")
+    polling_thread = threading.Thread(
+        target=lambda: bot.infinity_polling(
+            exception_handler=handle_polling_exception,
+            timeout=60,
+            long_polling_timeout=60,
+            allowed_updates=['message', 'callback_query']
+        ),
+        daemon=True
     )
+    polling_thread.start()
+    logger.info("Polling thread started")
+
+    # Запускаем Flask сервер в основном потоке (для health check)
+    if ping_flask:
+        port = int(os.environ.get("PORT", "10000"))
+        logger.info(f"Starting Flask health check server on port {port}...")
+        try:
+            ping_flask.run(host="0.0.0.0", port=port, debug=False, use_reloader=False, threaded=True)
+        except Exception as e:
+            logger.error(f"Flask server error: {e}")
+    else:
+        # Если Flask недоступен, просто держим процесс живым
+        logger.info("No Flask server, keeping process alive...")
+        while True:
+            time.sleep(1)
 
 if __name__ == "__main__":
     main()
