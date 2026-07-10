@@ -19,6 +19,64 @@ class LotGenerator:
         self._synonyms = self._load_synonyms()
         self._emojis = self._load_emojis()
 
+    # ── Динамическое масштабирование ───────────────────────────────
+    # Новая услуга: 3 лота. После 20 продаж: +5 (8). После 100: 15.
+    SCALE_THRESHOLDS = [
+        (0,   3),    # 0 продаж → 3 копии
+        (20,  8),    # 20+ продаж → 8 копий
+        (100, 15),   # 100+ продаж → 15 копий
+    ]
+
+    def _calculate_copies(self, service_tag: Optional[str] = None) -> int:
+        """Определяем сколько копий лота создавать по числу продаж."""
+        try:
+            sales = 0
+            if service_tag:
+                from runtime.database.base import get_session
+                from runtime.database.models import Order
+                session = get_session()
+                try:
+                    sales = session.query(Order).filter(
+                        Order.service_tag == service_tag,
+                        Order.status.in_(["completed", "in_progress"])
+                    ).count()
+                finally:
+                    session.close()
+            for threshold, copies in reversed(self.SCALE_THRESHOLDS):
+                if sales >= threshold:
+                    return copies
+            return 3
+        except Exception:
+            return 3  # безопасный дефолт
+
+    def _calculate_market_price(self, cost: float, quantity: int = 0,
+                                 service_name: str = "") -> float:
+        """Определяем цену с учётом рынка.
+        Если данных нет — fallback на ×1.3.
+        """
+        try:
+            if self._seller_service and service_name:
+                # Пытаемся найти похожие лоты на FunPay и взять мин. цену
+                lots = self._seller_service.search_lots(service_name)
+                if lots and isinstance(lots, list) and len(lots) > 1:
+                    prices = []
+                    for l in lots[:10]:
+                        p = l.get("price") if isinstance(l, dict) else getattr(l, "price", None)
+                        if p and float(p) > 0:
+                            prices.append(float(p))
+                    if len(prices) >= 3:
+                        min_price = min(prices)
+                        avg_price = sum(prices) / len(prices)
+                        # Ставим чуть ниже средней, но не ниже себестоимости + комиссия
+                        base_cost = cost
+                        commission = base_cost * 0.1  # ~10% комиссия FunPay
+                        min_safe = base_cost + commission
+                        suggested = round(avg_price * 0.95, 2)
+                        return max(suggested, min_safe)
+            return round(cost * 1.3, 2)
+        except Exception:
+            return round(cost * 1.3, 2)
+
     def _load_return_policy(self) -> str:
         policy_path = Path("configs/plugins/templates/return_policy.txt")
         if policy_path.exists():
@@ -93,7 +151,7 @@ class LotGenerator:
                     break
         return " ".join(words)
 
-    def generate_lots_for_service(self, service_id: int, base_title: str, quantity: int = 1000, copies: int = 15, max_price: float = 150.0, marker: str = "[AS#") -> List[Dict[str, Any]]:
+    def generate_lots_for_service(self, service_id: int, base_title: str, quantity: int = 1000, copies: Optional[int] = None, max_price: float = 150.0, marker: str = "[AS#") -> List[Dict[str, Any]]:
         service = None
         for s in self._load_twiboost_services():
             if str(s.get("service_id")) == str(service_id):
@@ -102,11 +160,17 @@ class LotGenerator:
         if not service:
             return []
 
+        # Динамическое число копий
+        tag = f"{marker}{service_id}]"
+        if copies is None:
+            copies = self._calculate_copies(tag)
+
         platform, stype = self._categorize_service(service)
         svc_name = service.get("name", base_title)
         rate = float(service.get("rate") or 0)
         cost = rate * quantity / 1000 if rate else 40.0
-        final_price = round(cost * 1.3, 2)
+        # Рыночная цена вместо фиксированной ×1.3
+        final_price = self._calculate_market_price(cost, quantity, svc_name)
         if final_price > max_price:
             return []
 
@@ -206,11 +270,15 @@ class LotGenerator:
             f"{self._return_policy}"
         )
 
-    def generate_discord_boost_lots(self, supplier: str, months: int = 1, copies: int = 15, max_price: float = 150.0) -> List[Dict[str, Any]]:
+    def generate_discord_boost_lots(self, supplier: str, months: int = 1, copies: Optional[int] = None, max_price: float = 150.0) -> List[Dict[str, Any]]:
         marker = "[GB#" if supplier == "gorgona" else "[HB#"
         name = "GorgonaBoosts" if supplier == "gorgona" else "HoldBoost"
         plat = "Discord"
         typ = "Бустов"
+        # Динамическое число копий
+        tag = f"{marker}{months}]"
+        if copies is None:
+            copies = self._calculate_copies(tag)
         tails = self._emojis.get("emojis_tail", ["БЫСТРО", "моментально", "ГАРАНТИЯ", "стабильно", "топ", "PRO", "новинка", "без списаний"])
         emojis_start = self._emojis.get("emojis_start", ["🔥", "⭐", "🚀", "💎", "✅", "💫", "✨", "🎯", "⚡"])
         templates = self._synonyms.get("title_templates", [
@@ -218,7 +286,8 @@ class LotGenerator:
             "{emoji} {plat} Boost {months} месяц {tail}",
             "{emoji} Буст {plat} на {months}м {tail}",
         ])
-        final_price = round((float(months) * 50.0) * 1.3, 2)
+        cost = float(months) * 50.0
+        final_price = self._calculate_market_price(cost, 0, f"Discord Boost {months}м")
         if final_price > max_price:
             return []
         lots = []
@@ -252,7 +321,7 @@ class LotGenerator:
             })
         return lots
 
-    def generate_kosell_lots(self, products: List[Dict[str, Any]], copies: int = 15, max_price: float = 150.0) -> List[Dict[str, Any]]:
+    def generate_kosell_lots(self, products: List[Dict[str, Any]], copies: Optional[int] = None, max_price: float = 150.0) -> List[Dict[str, Any]]:
         lots = []
         templates = [
             "🎮 {name} — {hours}ч аренда",
@@ -266,11 +335,13 @@ class LotGenerator:
             name = product.get("name") or f"Товар #{pid}"
             cost = float(product.get("price") or 50.0)
             for hours in [1, 3, 6, 12, 24, 48, 72, 168]:
-                final_price = round(cost * 1.3, 2)
+                tag = f"[KS#{pid}:{hours}]"
+                c = copies if copies is not None else self._calculate_copies(tag)
+                final_price = self._calculate_market_price(cost, 0, name)
                 if final_price > max_price:
                     continue
                 seen = set()
-                while len([l for l in lots if l.get("product_id") == pid and l.get("hours") == hours]) < copies:
+                while len([l for l in lots if l.get("product_id") == pid and l.get("hours") == hours]) < c:
                     tmpl = random.choice(templates)
                     raw = tmpl.format(name=name, hours=hours, marker=f"[KS#{pid}:{hours}]")
                     title = " ".join(raw.split())
@@ -296,28 +367,102 @@ class LotGenerator:
                     })
         return lots
 
-    def generate_all_lots(self, copies: int = 15, max_price: float = 150.0) -> Dict[str, List[Dict[str, Any]]]:
+    # ── Stars (Telegram Stars) ──────────────────────────────────────
+    # Генерация лотов для Stars-услуг. Маркер [ST#N].
+    # Работает только если настроен FRAGMENT_WALLET_SEED.
+
+    def generate_stars_lots(self, copies: Optional[int] = None,
+                            max_price: float = 5000.0) -> List[Dict[str, Any]]:
+        """Генерирует лоты для Telegram Stars (50, 100, 200, 500, 1000 звёзд)."""
+        stars_options = [50, 100, 200, 500, 1000, 2000]
+        result = []
+        base_cost_per_star = 1.2  # ~1.2₽ за звезду (себестоимость)
+        plat = "Telegram"
+        typ = "Звёзд"
+        tails = self._emojis.get("emojis_tail", ["БЫСТРО", "моментально", "ГАРАНТИЯ", "живые", "без списаний", "PRO"])
+        emojis_start = self._emojis.get("emojis_start", ["⭐", "🔥", "💎", "✅", "🚀"])
+        templates = [
+            "{emoji} {count} Telegram Stars | {tail}",
+            "{emoji} {count} Звёзд Telegram {tail}",
+            "{emoji} ✨ {count} TG Stars — {tail}",
+            "{emoji} {count} ⭐ Telegram Stars {tail}",
+        ]
+
+        for stars in stars_options:
+            tag = f"[ST#{stars}]"
+            c = copies if copies is not None else self._calculate_copies(tag)
+            cost = base_cost_per_star * stars
+            final_price = self._calculate_market_price(cost, stars, f"Telegram Stars {stars}")
+            if final_price > max_price:
+                continue
+
+            seen = set()
+            emoji_cycle = itertools.cycle(emojis_start)
+            while len([l for l in result if l.get("stars") == stars]) < c:
+                e1 = next(emoji_cycle)
+                tail = random.choice(tails) if random.random() < 0.5 else ""
+                tmpl = random.choice(templates)
+                raw = tmpl.format(emoji=e1, count=stars, tail=tail)
+                title = " ".join(raw.split())
+                if title in seen:
+                    continue
+                seen.add(title)
+                descr = (
+                    f"✅ Telegram Stars: {stars} ⭐\n"
+                    f"⚡ Зачисление: 1-5 минут\n"
+                    f"🎯 Гарантия, живые звёзды\n\n"
+                    f"{self._return_policy}"
+                )
+                result.append({
+                    "title": title,
+                    "description": descr,
+                    "price_rub": final_price + random.choice([-1, 0, 0, 0, 1]),
+                    "amount": 1,
+                    "marker": tag,
+                    "stars": stars,
+                    "service_name": f"Telegram Stars {stars}",
+                    "type": "stars",
+                })
+        return result
+
+    def generate_all_lots(self, copies: Optional[int] = None,
+                          max_price: float = 150.0) -> Dict[str, List[Dict[str, Any]]]:
         result = {
             "autosmm": [],
             "donate_gorgona": [],
             "donate_holdboost": [],
             "donate_kosell": [],
+            "stars": [],
         }
-        services = self._load_twiboost_services()
-        for svc in services:
+
+        # AutoSMM (Twiboost)
+        for svc in self._load_twiboost_services():
             sid = svc.get("service_id")
             if sid:
-                lots = self.generate_lots_for_service(sid, svc.get("name", ""), copies=copies, max_price=max_price)
+                lots = self.generate_lots_for_service(sid, svc.get("name", ""),
+                                                      copies=copies, max_price=max_price)
                 result["autosmm"].extend(lots)
 
-        result["donate_gorgona"] = self.generate_discord_boost_lots("gorgona", months=1, copies=copies, max_price=max_price)
-        result["donate_gorgona"].extend(self.generate_discord_boost_lots("gorgona", months=3, copies=copies, max_price=max_price))
-        result["donate_holdboost"] = self.generate_discord_boost_lots("holdboost", months=1, copies=copies, max_price=max_price)
-        result["donate_holdboost"].extend(self.generate_discord_boost_lots("holdboost", months=3, copies=copies, max_price=max_price))
+        # Discord (Gorgona/HoldBoost)
+        for supplier, months in [("gorgona", 1), ("gorgona", 3),
+                                  ("holdboost", 1), ("holdboost", 3)]:
+            lots = self.generate_discord_boost_lots(supplier, months=months,
+                                                     copies=copies, max_price=max_price)
+            key = f"donate_{supplier}"
+            if key not in result:
+                result[key] = []
+            result[key].extend(lots)
 
+        # Kosell
         kosell_products = self._load_kosell_products()
         if kosell_products:
-            result["donate_kosell"] = self.generate_kosell_lots(kosell_products, copies=copies, max_price=max_price)
+            result["donate_kosell"] = self.generate_kosell_lots(kosell_products,
+                                                                 copies=copies, max_price=max_price)
+
+        # Stars (если настроен Fragment)
+        import os as _os
+        if _os.environ.get("FRAGMENT_WALLET_SEED", "").strip():
+            result["stars"] = self.generate_stars_lots(copies=copies, max_price=max_price)
 
         return result
 
@@ -334,12 +479,22 @@ class LotGenerator:
                 if not title or not price:
                     failed += 1
                     continue
+                # Определяем category_id в зависимости от типа услуги
+                lot_type = lot.get("type", "")
+                category_id = None
+                if lot_type == "discord_boost":
+                    category_id = 14  # Discord-буст (пример)
+                elif lot_type == "stars":
+                    category_id = 26  # Telegram Stars (пример)
+                elif lot_type == "game_rental":
+                    category_id = 18  # Аренда игр
+
                 result = self._seller_service.create_lot({
                     "title": title,
                     "description": descr,
                     "price": price,
                     "amount": lot.get("amount", 1),
-                    "category_id": None,
+                    "category_id": category_id,
                 })
                 if result.get("ok"):
                     created += 1
