@@ -164,52 +164,32 @@ class HubController:
 controller = HubController()
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML", allow_sending_without_reply=True, num_threads=2)
 
-# ============ FLASK PING ENDPOINT ============
-try:
-    from flask import Flask as _FlaskForPing, request, jsonify
-    ping_flask = _FlaskForPing("tg_bot_ping")
-    
-    @ping_flask.route("/", methods=["GET"])
-    def _health_check():
-        """Health check endpoint for Render"""
-        return jsonify({"status": "ok", "service": "telegram_bot"})
-    
-    @ping_flask.route("/bot/ping_order", methods=["POST"])
-    def _bot_ping_order():
-        try:
-            data = request.get_json(silent=True) or {}
-            text = data.get("text", "🔔 Ping from FunPay Hub")
-            chat_id = data.get("chat_id") or _get_admin_chat_id()
-            if chat_id and text:
-                _safe_send(chat_id, text)
-            return jsonify({"ok": True})
-        except Exception as e:
-            logger.error(f"/bot/ping_order error: {e}")
-            return jsonify({"ok": False, "error": str(e)}), 500
+# ============ SIMPLE HTTP SERVER FOR HEALTH CHECK ============
+import http.server
+import socketserver
 
-    def _get_admin_chat_id():
-        try:
-            cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "plugins", "telegram_notifier_plugin.json")
-            with open(cfg_path, encoding="utf-8") as f:
-                return json.load(f).get("chat_id", "")
-        except Exception:
-            return ""
+class HealthCheckHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status":"ok","service":"telegram_bot"}')
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def log_message(self, format, *args):
+        pass  # Suppress default logging
 
-    def _start_ping_server():
-        try:
-            # Render health check on port 10000 (default for web services)
-            port = int(os.environ.get("PORT", "10000"))
-            t = threading.Thread(target=lambda: ping_flask.run(host="0.0.0.0", port=port, debug=False, use_reloader=False, threaded=True), daemon=True)
-            t.start()
+def _start_health_server():
+    try:
+        port = int(os.environ.get("PORT", "10000"))
+        with socketserver.TCPServer(("0.0.0.0", port), HealthCheckHandler) as httpd:
             logger.info(f"Health check server started on http://0.0.0.0:{port}")
-        except Exception as e:
-            logger.error(f"Ping server failed: {e}")
-            return False
-        return True
-except Exception as e:
-    ping_flask = None
-    def _start_ping_server():
-        pass
+            httpd.serve_forever()
+    except Exception as e:
+        logger.error(f"Health server failed: {e}")
 
 # ============ KEYBOARDS ============
 def main_menu():
@@ -879,7 +859,7 @@ def main():
         logger.error(f"Failed to connect to Telegram API: {e}")
         sys.exit(1)
 
-    # Удаляем webhook (на всяний случай)
+    # Удаляем webhook (на всякий случай)
     try:
         bot.remove_webhook()
         logger.info("Webhook removed")
@@ -930,19 +910,8 @@ def main():
     polling_thread.start()
     logger.info("Polling thread started")
 
-    # Запускаем Flask сервер в основном потоке (для health check)
-    if ping_flask:
-        port = int(os.environ.get("PORT", "10000"))
-        logger.info(f"Starting Flask health check server on port {port}...")
-        try:
-            ping_flask.run(host="0.0.0.0", port=port, debug=False, use_reloader=False, threaded=True)
-        except Exception as e:
-            logger.error(f"Flask server error: {e}")
-    else:
-        # Если Flask недоступен, просто держим процесс живым
-        logger.info("No Flask server, keeping process alive...")
-        while True:
-            time.sleep(1)
+    # Запускаем HTTP health check сервер в основном потоке
+    _start_health_server()
 
 if __name__ == "__main__":
     main()
