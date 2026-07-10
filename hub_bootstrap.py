@@ -335,6 +335,30 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True):
         print(f"[Bootstrap] EmergencyManager failed: {_e_em}")
         import traceback; traceback.print_exc()
 
+    # 7.4 ReportEngine (ежедневные отчёты, Этап D)
+    try:
+        from runtime.report_engine import ReportEngine
+        _admin_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "")
+        _re = ReportEngine(event_bus=event_bus, admin_chat_id=_admin_id)
+        _re.start()
+        event_bus._report_engine = _re
+        if verbose:
+            print("[Bootstrap] ReportEngine ready (Stage D)")
+    except Exception as _e_re:
+        print(f"[Bootstrap] ReportEngine failed: {_e_re}")
+
+    # 7.5 BackupManager (бэкап БД и конфигов, Этап K)
+    try:
+        from runtime.backup_manager import BackupManager
+        import os as _os_bm
+        _bm = BackupManager(admin_chat_id=_admin_id)
+        _bm.start()
+        event_bus._backup_manager = _bm
+        if verbose:
+            print("[Bootstrap] BackupManager ready (Stage K)")
+    except Exception as _e_bm:
+        print(f"[Bootstrap] BackupManager failed: {_e_bm}")
+
     # B18: start background worker (60s tick)
     try:
         from runtime.seller_service import seller_service_singleton as _svc_b18
