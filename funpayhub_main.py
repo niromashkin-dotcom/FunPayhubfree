@@ -124,7 +124,11 @@ app.register_blueprint(assistant_bp)
 # деплой нездоровым и убивает контейнер по healthcheckTimeout. Регистрируем напрямую.
 @app.route("/health")
 def _health():
-    return {"status": "ok"}, 200
+    return "ok", 200, {"Content-Type": "text/plain"}
+
+@app.route("/api/version")
+def _api_version():
+    return {"version": "2.0.0", "stage": "B", "status": "running"}
 
 # ===== API AUTH GUARD =====
 # Раньше /api/plugins/<n>/action/<action> и весь остальной внутренний API вызывались
