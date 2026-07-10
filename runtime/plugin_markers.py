@@ -28,6 +28,11 @@ KNOWN_PLUGIN_CODES = {
     "AS": "AutoSMM",
     "TU": "TopUp",
     "AB": "AutoBump",
+    "GB": "GorgonaBoosts",
+    "HB": "HoldBoost",
+    "KS": "Kosell",
+    "SC": "ShopClaude",
+    "ST": "Stars",
 }
 
 # Регекс: [XX#YYY] где XX = 2-4 заглавные буквы, YYY = цифры или буквы

@@ -295,6 +295,30 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True):
         print(f"[Bootstrap] OrderPaymentTracker failed: {_e_ot}")
         import traceback; traceback.print_exc()
 
+    # 7.2 Order Flow Manager (полный цикл заказа, Этап C)
+    try:
+        from runtime.order_flow import OrderFlowManager
+        from runtime.seller_service import seller_service_singleton as _svc_of
+        _tg_url = os.environ.get("TELEGRAM_BOT_URL", "")
+        _admin_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "")
+        if event_bus and _svc_of:
+            _ofm = OrderFlowManager(
+                seller_service=_svc_of,
+                event_bus=event_bus,
+                telegram_bot_url=_tg_url,
+                admin_chat_id=_admin_id,
+            )
+            _ofm.start()
+            # Store on app for access from plugins
+            if hasattr(event_bus, '_order_flow'):
+                pass
+            event_bus._order_flow_manager = _ofm
+            if verbose:
+                print("[Bootstrap] OrderFlowManager ready (Stage C)")
+    except Exception as _e_of:
+        print(f"[Bootstrap] OrderFlowManager failed: {_e_of}")
+        import traceback; traceback.print_exc()
+
     # B18: start background worker (60s tick)
     try:
         from runtime.seller_service import seller_service_singleton as _svc_b18
