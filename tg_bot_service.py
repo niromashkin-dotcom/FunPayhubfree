@@ -204,6 +204,8 @@ try:
             logger.info(f"Health check server started on http://0.0.0.0:{port}")
         except Exception as e:
             logger.error(f"Ping server failed: {e}")
+            return False
+        return True
 except Exception as e:
     ping_flask = None
     def _start_ping_server():
@@ -862,7 +864,20 @@ def callback_handler(call):
 def main():
     """Запуск бота"""
     logger.info("Starting Telegram Bot Service...")
-    logger.info("ADMIN LOADED: chat_id: ******")
+    
+    admin_id = get_admin_chat_id()
+    if admin_id:
+        logger.info(f"ADMIN LOADED: chat_id={admin_id}")
+    else:
+        logger.warning("ADMIN NOT LOADED - no admin chat ID configured")
+
+    # Проверяем токен
+    try:
+        bot_info = bot.get_me()
+        logger.info(f"Bot connected: @{bot_info.username} (id={bot_info.id})")
+    except Exception as e:
+        logger.error(f"Failed to connect to Telegram API: {e}")
+        sys.exit(1)
 
     # Удаляем webhook (на всякий случай)
     try:
