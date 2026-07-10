@@ -205,28 +205,24 @@ except Exception as e:
 def main_menu():
     kb = InlineKeyboardMarkup()
     kb.add(
-        InlineKeyboardButton("▶️ Start Hub", callback_data="start_hub"),
-        InlineKeyboardButton("⏹️ Stop Hub", callback_data="stop_hub")
+        InlineKeyboardButton("🚀 Старт системы", callback_data="start_hub"),
+        InlineKeyboardButton("🛑 Стоп системы", callback_data="stop_hub")
     )
     kb.add(
-        InlineKeyboardButton("📊 Рынок", callback_data="market_status"),
-        InlineKeyboardButton("💰 Баланс", callback_data="balance")
+        InlineKeyboardButton("📊 Отчёт сейчас", callback_data="report"),
+        InlineKeyboardButton("📜 Логи", callback_data="logs_view")
     )
     kb.add(
-        InlineKeyboardButton("📋 Отчёт", callback_data="report"),
-        InlineKeyboardButton("🔧 Система", callback_data="system_status")
+        InlineKeyboardButton("💰 Баланс", callback_data="balance"),
+        InlineKeyboardButton("🔥 Симуляция", callback_data="simulation")
     )
     kb.add(
-        InlineKeyboardButton("📦 Лоты", callback_data="create_lots"),
-        InlineKeyboardButton("🗑️ Снять лоты", callback_data="remove_all_lots")
+        InlineKeyboardButton("⚠️ Состояние", callback_data="system_status"),
+        InlineKeyboardButton("📦 Лоты", callback_data="create_lots")
     )
     kb.add(
-        InlineKeyboardButton("🔄 Авто-создание", callback_data="auto_create_toggle"),
-        InlineKeyboardButton("🧪 Симуляция", callback_data="simulation")
-    )
-    kb.add(
-        InlineKeyboardButton("📜 Логи", callback_data="logs_view"),
-        InlineKeyboardButton("🔌 Плагины", callback_data="plugins_panel")
+        InlineKeyboardButton("🤖 AI агент", callback_data="ai_agent"),
+        InlineKeyboardButton("💳 Кошелёк", callback_data="wallet")
     )
     return kb
 
@@ -347,9 +343,25 @@ def persist_authorized_user(user_id):
         logger.error(f"Failed to persist authorized user {user_id}: {e}")
         return False
 
+def get_admin_chat_id() -> str:
+    # First try environment variable (set in .env)
+    admin_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "").strip()
+    if admin_id:
+        return admin_id
+    # Fallback to plugin config (for backward compatibility)
+    try:
+        cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "plugins", "telegram_notifier_plugin.json")
+        with open(cfg_path, encoding="utf-8") as f:
+            return json.load(f).get("chat_id", "")
+    except Exception:
+        return ""
+
 def auth_middleware(func):
     """Декоратор для проверки авторизации"""
     def wrapper(message):
+        admin_id = get_admin_chat_id()
+        if admin_id and str(message.from_user.id) == str(admin_id):
+            return func(message)
         if message.chat.type == "private" and not is_user_authorized(message.from_user.id):
             logger.warning(f"Unauthorized access attempt from user_id={message.from_user.id}")
             try:
@@ -363,6 +375,9 @@ def auth_middleware(func):
 def auth_callback_middleware(func):
     """Декоратор для проверки авторизации callback-запросов"""
     def wrapper(call):
+        admin_id = get_admin_chat_id()
+        if admin_id and str(call.from_user.id) == str(admin_id):
+            return func(call)
         if not is_user_authorized(call.from_user.id):
             logger.warning(f"Unauthorized callback attempt from user_id={call.from_user.id}")
             try:
@@ -377,9 +392,9 @@ def auth_callback_middleware(func):
 @bot.message_handler(commands=["start", "menu"])
 @auth_middleware
 def cmd_start(message):
-    logger.info(f"/start from chat_id={message.chat.id} user_id={message.from_user.id}")
+    logger.info(f"START COMMAND RECEIVED user={message.from_user.id} chat={message.chat.id}")
     try:
-        bot.send_message(message.chat.id, "🎮 FunPay Hub Control Panel", reply_markup=main_menu())
+        bot.send_message(message.chat.id, "FunPayHub Control Panel", reply_markup=main_menu())
     except Exception as e:
         logger.error(f"Failed to send start reply: {e}")
 
@@ -451,7 +466,7 @@ def cmd_ping(message):
 @bot.message_handler(func=lambda m: True)
 def debug_all_messages(message):
     try:
-        logger.debug(f"Incoming message: chat_id={message.chat.id} text={getattr(message, 'text', '')!r}")
+        logger.info(f"UPDATE RECEIVED type={message.content_type} chat_id={message.chat.id} user_id={message.from_user.id}")
     except Exception:
         pass
 
@@ -534,9 +549,9 @@ def callback_handler(call):
                 if ok:
                     rub = result.get("available_rub") or result.get("balance") or result.get("total_rub", 0)
                     text = f"💰 Баланс:\n\n{json.dumps(result, indent=2, ensure_ascii=False)}"
-                    _safe_edit(bot, chat_id, mid, text, parse_mode=None)
+                    _safe_edit(bot, chat_id, mid, text, reply_markup=main_menu())
                 else:
-                    _safe_edit(bot, chat_id, mid, f"❌ {result}", parse_mode=None)
+                    _safe_edit(bot, chat_id, mid, f"❌ {result}", reply_markup=main_menu())
             except Exception as e:
                 logger.error(f"balance error: {e}")
                 _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", parse_mode=None)
@@ -688,6 +703,38 @@ def callback_handler(call):
             except Exception as e:
                 _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
 
+        elif cmd == "ai_agent":
+            try:
+                ok, result = controller.call_api("/api/ai/status", "GET")
+                if ok:
+                    status = result.get("status", "unknown")
+                    text = f"🤖 <b>AI Agent статус</b>:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
+                else:
+                    text = f"❌ {result}"
+                _safe_edit(bot, chat_id, mid, text, main_menu())
+            except Exception as e:
+                logger.error(f"ai_agent error: {e}")
+                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
+
+        elif cmd == "wallet":
+            try:
+                ok, result = controller.call_api("/api/wallet/balance", "GET")
+                if ok:
+                    balance = result.get("balance", 0)
+                    currency = result.get("currency", "₽")
+                    text = f"💳 <b>Кошелёк</b>:\nБаланс: {balance:.2f} {currency}\nДетали:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
+                else:
+                    text = f"❌ {result}"
+                _safe_edit(bot, chat_id, mid, text, main_menu())
+            except Exception as e:
+                logger.error(f"wallet error: {e}")
+                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
+
+        elif cmd == "settings":
+            # Placeholder for settings
+            text = "⚙ <b>Настройки</b>:\nЗдесь будут настройки бота (в разработке)."
+            _safe_edit(bot, chat_id, mid, text, main_menu())
+
         elif cmd == "logs_refresh":
             try:
                 ok, result = controller.call_api("/dashboard/api/logs", "GET")
@@ -758,6 +805,38 @@ def callback_handler(call):
             except Exception as e:
                 _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
 
+        elif cmd == "ai_agent":
+            try:
+                ok, result = controller.call_api("/api/ai/status", "GET")
+                if ok:
+                    status = result.get("status", "unknown")
+                    text = f"🤖 <b>AI Agent статус</b>:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
+                else:
+                    text = f"❌ {result}"
+                _safe_edit(bot, chat_id, mid, text, main_menu())
+            except Exception as e:
+                logger.error(f"ai_agent error: {e}")
+                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
+
+        elif cmd == "wallet":
+            try:
+                ok, result = controller.call_api("/api/wallet/balance", "GET")
+                if ok:
+                    balance = result.get("balance", 0)
+                    currency = result.get("currency", "₽")
+                    text = f"💳 <b>Кошелёк</b>:\nБаланс: {balance:.2f} {currency}\nДетали:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
+                else:
+                    text = f"❌ {result}"
+                _safe_edit(bot, chat_id, mid, text, main_menu())
+            except Exception as e:
+                logger.error(f"wallet error: {e}")
+                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
+
+        elif cmd == "settings":
+            # Placeholder for settings
+            text = "⚙ Настройки пока не реализованы."
+            _safe_edit(bot, chat_id, mid, text, main_menu())
+
         elif cmd == "back_to_menu":
             _safe_edit(bot, chat_id, mid, "🎮 FunPay Hub Control Panel", main_menu())
 
@@ -775,6 +854,7 @@ def callback_handler(call):
 def main():
     """Запуск бота"""
     logger.info("Starting Telegram Bot Service...")
+    logger.info("ADMIN LOADED: chat_id: ******")
 
     # Удаляем webhook (на всякий случай)
     try:
