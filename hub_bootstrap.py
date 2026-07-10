@@ -369,6 +369,20 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True):
     except Exception as _e_swp:
         print(f"[Bootstrap] SupplierWorkerPool failed: {_e_swp}")
 
+    # 7.7 AI Engineer Agent (диагностика и патчи, Этап G)
+    try:
+        from runtime.ai_engineer_agent import AIEngineerAgent
+        _admin_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "")
+        _llm_key = os.environ.get("GOOGLE_API_KEY", "")
+        _ai = AIEngineerAgent(admin_chat_id=_admin_id, llm_api_key=_llm_key)
+        _ai.start()
+        event_bus._ai_agent = _ai
+        if verbose:
+            _status = "активен" if _llm_key else "ожидает API ключ"
+            print(f"[Bootstrap] AIEngineerAgent ready ({_status}) (Stage G)")
+    except Exception as _e_ai:
+        print(f"[Bootstrap] AIEngineerAgent failed: {_e_ai}")
+
     # B18: start background worker (60s tick)
     try:
         from runtime.seller_service import seller_service_singleton as _svc_b18
