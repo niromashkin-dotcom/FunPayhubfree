@@ -166,8 +166,14 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML", allow_sending_without_reply=
 
 # ============ FLASK PING ENDPOINT ============
 try:
-    from flask import Flask as _FlaskForPing
+    from flask import Flask as _FlaskForPing, request, jsonify
     ping_flask = _FlaskForPing("tg_bot_ping")
+    
+    @ping_flask.route("/", methods=["GET"])
+    def _health_check():
+        """Health check endpoint for Render"""
+        return jsonify({"status": "ok", "service": "telegram_bot"})
+    
     @ping_flask.route("/bot/ping_order", methods=["POST"])
     def _bot_ping_order():
         try:
@@ -191,9 +197,11 @@ try:
 
     def _start_ping_server():
         try:
-            t = threading.Thread(target=lambda: ping_flask.run(host="127.0.0.1", port=5001, debug=False, use_reloader=False), daemon=True)
+            # Render health check on port 10000 (default for web services)
+            port = int(os.environ.get("PORT", "10000"))
+            t = threading.Thread(target=lambda: ping_flask.run(host="0.0.0.0", port=port, debug=False, use_reloader=False, threaded=True), daemon=True)
             t.start()
-            logger.info("Ping server started on http://127.0.0.1:5001")
+            logger.info(f"Health check server started on http://0.0.0.0:{port}")
         except Exception as e:
             logger.error(f"Ping server failed: {e}")
 except Exception as e:
