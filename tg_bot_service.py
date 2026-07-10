@@ -185,9 +185,11 @@ class HealthCheckHandler(http.server.SimpleHTTPRequestHandler):
 def _start_health_server():
     try:
         port = int(os.environ.get("PORT", "10000"))
-        with socketserver.TCPServer(("0.0.0.0", port), HealthCheckHandler) as httpd:
-            logger.info(f"Health check server started on http://0.0.0.0:{port}")
-            httpd.serve_forever()
+        socketserver.TCPServer.allow_reuse_address = True
+        httpd = socketserver.TCPServer(("0.0.0.0", port), HealthCheckHandler)
+        t = threading.Thread(target=httpd.serve_forever, daemon=True)
+        t.start()
+        logger.info(f"Health check server started on http://0.0.0.0:{port}")
     except Exception as e:
         logger.error(f"Health server failed: {e}")
 
@@ -873,6 +875,9 @@ def main():
     else:
         logger.info("ℹ️ Hub is not running. Use Start button.")
 
+    # Запускаем HTTP health check сервер в daemon thread
+    _start_health_server()
+
     # Обработчик ошибок polling
     def handle_polling_exception(exception):
         error_msg = str(exception)
@@ -896,22 +901,14 @@ def main():
         time.sleep(5)
         return True
 
-    # Запускаем polling в отдельном потоке
-    logger.info("Starting infinity_polling in background thread...")
-    polling_thread = threading.Thread(
-        target=lambda: bot.infinity_polling(
-            exception_handler=handle_polling_exception,
-            timeout=60,
-            long_polling_timeout=60,
-            allowed_updates=['message', 'callback_query']
-        ),
-        daemon=True
+    # Запускаем polling в основном потоке
+    logger.info("Starting infinity_polling in main thread...")
+    bot.infinity_polling(
+        exception_handler=handle_polling_exception,
+        timeout=60,
+        long_polling_timeout=60,
+        allowed_updates=['message', 'callback_query']
     )
-    polling_thread.start()
-    logger.info("Polling thread started")
-
-    # Запускаем HTTP health check сервер в основном потоке
-    _start_health_server()
 
 if __name__ == "__main__":
     main()
