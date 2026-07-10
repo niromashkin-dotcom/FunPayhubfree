@@ -359,6 +359,16 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True):
     except Exception as _e_bm:
         print(f"[Bootstrap] BackupManager failed: {_e_bm}")
 
+    # 7.6 SupplierWorkerPool (конкурентность, Этап E)
+    try:
+        from runtime.supplier_worker import SupplierWorkerPool
+        _swp = SupplierWorkerPool()
+        event_bus._supplier_worker_pool = _swp
+        if verbose:
+            print("[Bootstrap] SupplierWorkerPool ready (Stage E)")
+    except Exception as _e_swp:
+        print(f"[Bootstrap] SupplierWorkerPool failed: {_e_swp}")
+
     # B18: start background worker (60s tick)
     try:
         from runtime.seller_service import seller_service_singleton as _svc_b18
