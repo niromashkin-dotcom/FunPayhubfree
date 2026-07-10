@@ -1,4 +1,4 @@
-﻿import shutil
+import shutil
 import tempfile
 from pathlib import Path
 from datetime import datetime

@@ -1,4 +1,4 @@
-﻿import json, time, threading, sys, os
+import json, time, threading, sys, os
 import re as _re
 import uuid
 from concurrent.futures import ThreadPoolExecutor

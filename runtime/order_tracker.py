@@ -193,6 +193,7 @@ class OrderPaymentTracker:
             price = event.get("price", 0) if isinstance(event, dict) else getattr(event, "price", 0)
             title = event.get("title", "") if isinstance(event, dict) else getattr(event, "title", "")
             url = event.get("url", "") if isinstance(event, dict) else getattr(event, "url", "")
+            buyer = event.get("buyer", "") if isinstance(event, dict) else getattr(event, "buyer", "")
             if not order_id or not chat_id:
                 return
             with self._lock:
@@ -210,6 +211,17 @@ class OrderPaymentTracker:
                     "url": url or f"https://funpay.com/orders/{order_id}/",
                 }
             print(f"[OrderTracker] Tracking order {order_id}")
+            # Persist to database
+            try:
+                from runtime.database.repository import Repository
+                Repository.create_order(
+                    funpay_order_id=order_id,
+                    price=price,
+                    buyer_name=buyer,
+                    chat_id=chat_id,
+                )
+            except Exception as db_e:
+                print(f"[OrderTracker] DB persist error: {db_e}")
         except Exception as e:
             print(f"[OrderTracker] _on_new_order error: {e}")
 
@@ -298,6 +310,17 @@ class SupplierOrderRegistry:
                 "created_at": time.time(),
             }
         self._save()
+        # Also persist to database
+        try:
+            from runtime.database.repository import Repository
+            Repository.update_order_status(
+                funpay_order_id=funpay_order_id,
+                status="in_progress",
+                supplier_name=supplier,
+                supplier_order_id=str(supplier_order_id),
+            )
+        except Exception:
+            pass
 
     def remove(self, funpay_order_id: str):
         """Remove an entry (e.g. after a refund / order closed)."""

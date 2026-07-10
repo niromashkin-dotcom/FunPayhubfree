@@ -1,4 +1,4 @@
-﻿"""
+"""
 Universal Lot Auto-Matcher for FunPay Hub plugins.
 
 Used by AutoSMM (and future plugins like Stars, TopUp, etc.) to automatically

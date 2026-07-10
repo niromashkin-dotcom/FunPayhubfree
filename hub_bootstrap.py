@@ -172,6 +172,15 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True):
     notification_manager = None
     event_bus            = None
 
+    # 0. Database — init tables
+    try:
+        from runtime.database.base import init_db
+        init_db()
+        if verbose:
+            print("[Bootstrap] Database tables ready")
+    except Exception as e:
+        print(f"[Bootstrap] Database init failed: {e}")
+
     # 1. RuntimeLog
     try:
         from runtime.runtime_log import RuntimeLog
