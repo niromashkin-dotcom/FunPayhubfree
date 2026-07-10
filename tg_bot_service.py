@@ -43,7 +43,7 @@ _ch.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
 logger.addHandler(_ch)
 
 # ============ CONFIG ============
-HUB_URL = os.getenv("FUNPAYHUB_API_URL", "http://127.0.0.1:5000")
+HUB_URL = os.getenv("FUNPAYHUB_APP_URL", "http://127.0.0.1:5000")
 HUB_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "funpayhub_main.py")
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tg_bot_service.pid")
