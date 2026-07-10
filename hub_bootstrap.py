@@ -309,14 +309,30 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True):
                 admin_chat_id=_admin_id,
             )
             _ofm.start()
-            # Store on app for access from plugins
-            if hasattr(event_bus, '_order_flow'):
-                pass
             event_bus._order_flow_manager = _ofm
             if verbose:
                 print("[Bootstrap] OrderFlowManager ready (Stage C)")
     except Exception as _e_of:
         print(f"[Bootstrap] OrderFlowManager failed: {_e_of}")
+        import traceback; traceback.print_exc()
+
+    # 7.3 EmergencyManager (система состояний, Этап J)
+    try:
+        from runtime.emergency_manager import EmergencyManager
+        from runtime.seller_service import seller_service_singleton as _svc_em
+        _admin_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "")
+        _em = EmergencyManager(
+            event_bus=event_bus,
+            seller_service=_svc_em,
+            plugin_manager=plugin_manager,
+            admin_chat_id=_admin_id,
+        )
+        _em.start()
+        event_bus._emergency_manager = _em
+        if verbose:
+            print("[Bootstrap] EmergencyManager ready (Stage J)")
+    except Exception as _e_em:
+        print(f"[Bootstrap] EmergencyManager failed: {_e_em}")
         import traceback; traceback.print_exc()
 
     # B18: start background worker (60s tick)
@@ -339,7 +355,7 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True):
 
     # G2: Health check every 60 seconds
     try:
-        _start_health_check(interval_sec=60, verbose=verbose, plugin_manager=plugin_manager)
+        _start_health_check(interval_sec=60, verbose=verbose, plugin_manager=plugin_manager, event_bus=event_bus)
         if verbose:
             print("[Bootstrap] Health check started (60s)")
     except Exception as _ew_hc:
@@ -433,7 +449,7 @@ def _do_auto_backup(verbose=True):
 # G2: Health check every 60 seconds
 # ---------------------------------------------------------------------
 
-def _start_health_check(interval_sec=60, verbose=True, plugin_manager=None):
+def _start_health_check(interval_sec=60, verbose=True, plugin_manager=None, event_bus=None):
     import threading, time, logging
 
     logger = logging.getLogger("FunPayHUB.Health")
@@ -464,7 +480,7 @@ def _start_health_check(interval_sec=60, verbose=True, plugin_manager=None):
         while True:
             time.sleep(interval_sec)
             try:
-                _run_health_check(verbose=verbose, plugin_manager=plugin_manager)
+                _run_health_check(verbose=verbose, plugin_manager=plugin_manager, event_bus=event_bus)
                 logger.info("Health check tick completed")
             except Exception as e:
                 logger.error(f"Health check tick failed: {e}")
@@ -474,7 +490,7 @@ def _start_health_check(interval_sec=60, verbose=True, plugin_manager=None):
     return t
 
 
-def _run_health_check(verbose=True, plugin_manager=None):
+def _run_health_check(verbose=True, plugin_manager=None, event_bus=None):
     import logging, time
     logger = logging.getLogger("FunPayHUB.Health")
     secrets = SecretsManager()
@@ -485,6 +501,14 @@ def _run_health_check(verbose=True, plugin_manager=None):
         ("shopclaude", None, None),
         ("kosell", "https://api.kosell.store/products", {"Authorization": f"Bearer {secrets.get_secret('KOSELL_API_KEY', '')}"}),
     ]
+
+    # Get EmergencyManager reference from event_bus if available
+    _em = None
+    try:
+        if event_bus and hasattr(event_bus, '_emergency_manager'):
+            _em = event_bus._emergency_manager
+    except Exception:
+        pass
 
     for name, url, headers in suppliers:
         if not url:
@@ -507,6 +531,13 @@ def _run_health_check(verbose=True, plugin_manager=None):
                 last_error = str(e)
                 logger.debug(f"Health check {name} attempt {attempt} failed: {e}")
                 time.sleep(10)
+
+        # Report to EmergencyManager
+        if _em:
+            try:
+                _em.check_supplier(name, ok)
+            except Exception:
+                pass
 
         prev = _last_supplier_state.get(name, False)
         if ok and not prev:
