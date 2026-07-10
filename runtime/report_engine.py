@@ -127,23 +127,54 @@ class ReportEngine:
         return "\n".join(lines)
 
     def _build_forecast(self) -> str:
-        """Прогноз на основе данных из БД."""
+        """Прогноз + бизнес-метрики (Этап L)."""
         try:
             from runtime.database.repository import Repository
             from runtime.database.ledger import Ledger
+            from runtime.database.base import get_session
+            from runtime.database.models import Order, Provider
+            from sqlalchemy import func
+
             now = time.time()
             week_ago = now - 7 * 86400
+            month_ago = now - 30 * 86400
+
             report = Ledger.get_daily_report(week_ago, now)
             weekly_profit = report.get("total_profit", 0)
             daily_avg = weekly_profit / 7 if weekly_profit else 0
+
+            # ── Данные из БД ──
+            session = get_session()
+            try:
+                # Заказы по дням недели
+                total_orders = session.query(func.count(Order.id)).filter(
+                    Order.started_at >= month_ago).scalar() or 0
+
+                # Эффективность поставщиков
+                providers_data = []
+                providers = session.query(Provider).all()
+                for p in providers:
+                    p_orders = session.query(func.count(Order.id)).filter(
+                        Order.provider_id == p.id,
+                        Order.started_at >= week_ago).scalar() or 0
+                    if p_orders > 0:
+                        providers_data.append(f"  • {p.name}: {p_orders} заказов/нед")
+            finally:
+                session.close()
+
+            lines = [
+                f"  • Средняя прибыль/день: {daily_avg:.2f} ₽",
+                f"  • Прогноз на неделю: {daily_avg * 7:.2f} ₽",
+                f"  • Прогноз на месяц: {daily_avg * 30:.2f} ₽",
+                f"  • Заказов за 30 дней: {total_orders}",
+            ]
+            if providers_data:
+                lines.append("  ─── Поставщики ───")
+                lines.extend(providers_data)
+
+            return "\n".join(lines)
         except Exception:
             return "Прогноз временно недоступен"
-
-        return (
-            f"  • Средняя прибыль/день: {daily_avg:.2f} ₽\n"
-            f"  • Прогноз на неделю: {daily_avg * 7:.2f} ₽\n"
-            f"  • Прогноз на месяц: {daily_avg * 30:.2f} ₽"
-        )
 
     # ── Отправка ──────────────────────────────────────────────────
 
