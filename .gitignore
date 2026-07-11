@@ -28,3 +28,12 @@ configs/autodelivery/
 configs/test_plugins/
 data/state/
 data/autosmm/
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Резервные копии конфигов и БД (runtime-генерация, не код)
+backups/
+
+# Сгенерированные логи/дампы
+git_log.txt

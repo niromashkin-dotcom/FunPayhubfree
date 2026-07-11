@@ -1,9 +1,6 @@
+"""Тесты для проверки GOLDEN_KEY."""
 import os
-import pytest
-from dotenv import load_dotenv
 
-# Загрузить переменные окружения перед тестом
-load_dotenv()
 
 def test_golden_key_exists():
     """Проверка что GOLDEN_KEY установлен в окружении."""

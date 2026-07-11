@@ -178,19 +178,51 @@ class ReportEngine:
 
     # ── Отправка ──────────────────────────────────────────────────
 
-    def _send_admin(self, text: str):
+    def _get_main_menu_markup(self):
+        """Return inline keyboard JSON matching tg_bot_service.main_menu()."""
+        # Buttons as defined in tg_bot_service.py after our edits
+        keyboard = [
+            [
+                {"text": "🚀 Старт системы", "callback_data": "start_hub"},
+                {"text": "🛑 Стоп системы", "callback_data": "stop_hub"}
+            ],
+            [
+                {"text": "📊 Отчёт сейчас", "callback_data": "report"},
+                {"text": "📜 Логи", "callback_data": "logs_view"}
+            ],
+            [
+                {"text": "💰 Баланс", "callback_data": "balance"},
+                {"text": "🔥 Симуляция", "callback_data": "simulation"}
+            ],
+            [
+                {"text": "⚠️ Состояние системы", "callback_data": "system_status"},
+                {"text": "📦 Лоты", "callback_data": "create_lots"}
+            ],
+            [
+                {"text": "🤖 AI агент", "callback_data": "ai_agent"},
+                {"text": "💳 Кошелёк", "callback_data": "wallet"}
+            ]
+        ]
+        return {"inline_keyboard": keyboard}
+
+    def _send_admin(self, text: str, reply_markup=None):
         if not text or not self._admin_chat_id:
             return
         try:
             from runtime.http_client import HTTPClient
-            import os
+            import os, json
             hc = HTTPClient()
             token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
             if token:
+                payload = {
+                    "chat_id": self._admin_chat_id,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "reply_markup": reply_markup or json.dumps(self._get_main_menu_markup())
+                }
                 hc.post(
                     f"https://api.telegram.org/bot{token}/sendMessage",
-                    json={"chat_id": self._admin_chat_id, "text": text,
-                           "parse_mode": "HTML"},
+                    json=payload,
                     timeout=10,
                 )
         except Exception as e:
