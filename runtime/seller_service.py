@@ -5,6 +5,13 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional, Any
 
+# Load .env file if present (important for local development)
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv()
+except ImportError:
+    pass
+
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -155,12 +162,37 @@ class SellerService:
             print(f"[seller_service] _match_order_to_lot failed: {e}")
         return {}
     def load_credentials(self) -> dict:
-        if not CREDS_FILE.exists():
-            return {}
-        try:
-            return json.loads(CREDS_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
+        """Load credentials from file, with ENV fallback for golden_key."""
+        # Try reading from file first
+        file_creds = {}
+        if CREDS_FILE.exists():
+            try:
+                file_creds = json.loads(CREDS_FILE.read_text(encoding="utf-8"))
+            except Exception:
+                file_creds = {}
+
+        # If file has a valid golden_key, use it
+        if file_creds.get("golden_key"):
+            return file_creds
+
+        # Fallback: check environment variables (critical for Render/cloud deployments)
+        env_key = (
+            os.environ.get("GOLDEN_KEY", "").strip()
+            or os.environ.get("FUNPAY_GOLDEN_KEY", "").strip()
+            or os.environ.get("FUNPAYHUB_GOLDEN_KEY", "").strip()
+        )
+        if env_key:
+            creds = dict(file_creds)
+            creds["golden_key"] = env_key
+            # Also persist to file so subsequent calls are faster
+            try:
+                CREDS_FILE.write_text(json.dumps(creds, ensure_ascii=False, indent=2), encoding="utf-8")
+                print(f"[seller_service] Auto-saved golden_key from ENV to {CREDS_FILE}")
+            except Exception as _e:
+                print(f"[seller_service] Could not persist credentials: {_e}")
+            return creds
+
+        return file_creds
 
     def save_credentials(self, golden_key, user_agent=None) -> bool:
         try:
@@ -198,22 +230,27 @@ class SellerService:
         if self._account is not None:
             return self._account
         creds = self.load_credentials()
-        if not creds.get("golden_key"):
+        golden_key = creds.get("golden_key", "")
+        if not golden_key:
+            print("[seller_service] _get_account: no golden_key found in credentials or ENV")
             return None
         try:
             _force_no_proxy()
+            print(f"[seller_service] Connecting to FunPay with golden_key={golden_key[:6]}...")
             from FunPayAPI.account import Account
-            acc = Account(golden_key=creds["golden_key"], user_agent=creds.get("user_agent"), requests_timeout=15, proxy={})
+            acc = Account(golden_key=golden_key, user_agent=creds.get("user_agent"), requests_timeout=15, proxy={})
             if hasattr(acc, "session") and acc.session is not None:
                 acc.session.trust_env = False
                 acc.session.proxies = {}
             acc.get()
             self._account = acc
             self._last_error = None
+            print(f"[seller_service] FunPay connected: user={getattr(acc, 'username', '?')} id={getattr(acc, 'id', '?')}")
             return acc
         except Exception as e:
             self._last_error = _safe_error(e)
             self._account = None
+            print(f"[seller_service] FunPay connection failed: {self._last_error}")
             return None
 
     def _cached(self, key, ttl=CACHE_TTL):

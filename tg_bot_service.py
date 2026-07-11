@@ -151,28 +151,30 @@ class HubController:
 
     def call_api(self, endpoint, method="GET", payload=None):
         url = HUB_URL + endpoint
-        api_token = os.environ.get("FUNPAYHUB_API_TOKEN", "fhp_api_token_2026_change_me_later").strip()
-        headers = {"X-API-Token": api_token}
-        logger.info(f"Trying to contact Hub: [{method}] {url} headers={headers} payload={payload}")
+        api_token = os.environ.get("FUNPAYHUB_API_TOKEN", "").strip()
+        if not api_token:
+            logger.warning(f"FUNPAYHUB_API_TOKEN not set! Hub API calls may fail with 401. HUB_URL={HUB_URL}")
+        headers = {"X-API-Token": api_token} if api_token else {}
+        logger.info(f"[HUB] [{method}] {url}")
         _http = HTTPClient(default_headers=headers)
         try:
             if method == "GET":
                 data = _http.get(url, timeout=15)
             else:
                 data = _http.post(url, json=payload or {}, timeout=15)
-            logger.info(f"Hub replied successfully on {endpoint}: {str(data)[:200]}")
+            logger.info(f"[HUB] OK {endpoint}: {str(data)[:300]}")
             if data is not None:
                 return True, data
             return False, {"error": "Empty response"}
         except HTTPClientError as e:
             import traceback
             tb = traceback.format_exc()
-            logger.error(f"Hub timeout/error on {endpoint}: {e}\n{tb}")
-            return False, f"Hub не отвечает:\n{e}\n\nTraceback:\n{tb}"
+            logger.error(f"[HUB] ERROR {endpoint}: {e}\n{tb}")
+            return False, f"Hub не отвечает ({url}):\n{e}\n\nTraceback:\n{tb}"
         except Exception as e:
             import traceback
             tb = traceback.format_exc()
-            logger.error(f"API call failed {endpoint}: {e}\n{tb}")
+            logger.error(f"[HUB] EXCEPTION {endpoint}: {e}\n{tb}")
             return False, f"Ошибка: {e}\n\nTraceback:\n{tb}"
 
 controller = HubController()
@@ -617,23 +619,43 @@ def callback_handler(call):
         elif cmd == "system_status":
             logger.info("[CALLBACK] system_status: Processing query")
             try:
-                ok, result = controller.call_api("/api/system/health")
-                if ok:
-                    lines = ["🔧 <b>Состояние системы</b>:", ""]
-                    for k in ["flask", "plugin_manager", "seller_service", "eventbus"]:
-                        v = result.get(k, "unknown")
-                        if v and ("ok" in str(v).lower() or "active" in str(v).lower()):
-                            emoji = "✅"
-                        elif v and "not_connected" in str(v).lower():
-                            emoji = "⚠️"
-                        else:
-                            emoji = "🔴"
-                        lines.append(f"{emoji} <b>{k}</b>: {v}")
-                    lines.append("")
-                    lines.append(f"🕐 <i>{result.get('timestamp', '')}</i>")
-                    text = "\n".join(lines)
+                ok_health, health = controller.call_api("/api/system/health")
+                ok_overview, overview = controller.call_api("/api/seller/overview")
+                lines = ["🔧 <b>Состояние системы</b>:", ""]
+
+                if ok_overview and isinstance(overview, dict):
+                    connected = overview.get("connected", False)
+                    username = overview.get("username", "?")
+                    fp_emoji = "✅" if connected else "🔴"
+                    lines.append(f"{fp_emoji} <b>FunPay</b>: {'подключён — @' + username if connected else 'не подключён'}")
+                    if not connected:
+                        err = overview.get("error", "Нет авторизации")
+                        lines.append(f"   ⚠️ {err}")
                 else:
-                    text = f"❌ Ошибка получения статуса: {result}"
+                    lines.append(f"🔴 <b>FunPay</b>: {overview if not ok_overview else 'ошибка'}")
+
+                if ok_health and isinstance(health, dict):
+                    status = health.get("status", "unknown")
+                    status_emoji = "✅" if status == "ok" else ("⚠️" if status == "warning" else "🔴")
+                    lines.append(f"{status_emoji} <b>Хаб</b>: {status}")
+                    issues = health.get("issues", [])
+                    if issues:
+                        lines.append("")
+                        lines.append("⚠️ <b>Предупреждения:</b>")
+                        for issue in issues[:5]:
+                            lvl = issue.get("level", "")
+                            msg = issue.get("message", "")
+                            emo = "❌" if lvl == "error" else "⚠️"
+                            lines.append(f"  {emo} {msg}")
+                    backups = health.get("backups_count", 0)
+                    lines.append(f"💾 <b>Бэкапов:</b> {backups}")
+                else:
+                    lines.append(f"❓ <b>Хаб</b>: не отвечает")
+
+                import time as _t
+                lines.append("")
+                lines.append(f"🕐 <i>{_t.strftime('%Y-%m-%d %H:%M:%S')}</i>")
+                text = "\n".join(lines)
                 _safe_edit(bot, chat_id, mid, text, main_menu())
             except Exception as e:
                 import traceback
