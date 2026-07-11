@@ -16,7 +16,7 @@ from runtime.http_client import HTTPClient, HTTPClientError
 from runtime.order_tracker import get_supplier_order_registry
 
 try:
-    from Utils.ttl_cache import TTLSet
+    from runtime.ttl_cache import TTLSet
 except Exception:
     TTLSet = None
 
