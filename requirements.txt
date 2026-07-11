@@ -9,6 +9,7 @@ pydantic>=2.5.0,<3
 
 # Обязательны для FunPayAPI (скрапинг funpay.com) — без них account.py не импортируется
 beautifulsoup4>=4.12.3,<5
+lxml>=4.9.0,<6
 requests-toolbelt>=1.0.0,<2
 urllib3>=2.2.1,<3
 

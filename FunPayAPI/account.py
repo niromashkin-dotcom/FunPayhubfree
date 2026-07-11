@@ -8,7 +8,7 @@ from FunPayAPI.common.utils import parse_currency, RegularExpressions
 from .types import PaymentMethod, CalcResult
 
 if TYPE_CHECKING:
-    from .updater.runner import Runner
+    pass
 
 from requests_toolbelt import MultipartEncoder
 from bs4 import BeautifulSoup
@@ -111,7 +111,7 @@ class Account:
         self.__initiated: bool = False
 
         self.__saved_chats: dict[int, types.ChatShortcut] = {}
-        self.runner: Runner | None = None
+        self.runner: Any | None = None
         """Объект Runner'а."""
         self._logout_link: str | None = None
         """Ссылка для выхода с аккаунта"""
