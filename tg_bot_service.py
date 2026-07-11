@@ -920,10 +920,6 @@ def main():
             logger.info(f"LISTENER: Received message: text={message.text} chat={message.chat.id} user={message.from_user.id if message.from_user else 'None'}")
     bot.set_update_listener(update_listener)
 
-    @bot.middleware_handler(update_types=['message'])
-    def test_middleware(bot_instance, message):
-        logger.info(f"MIDDLEWARE: Received message: text={message.text} chat={message.chat.id} user={message.from_user.id if message.from_user else 'None'}")
-
 
     # Обработчик ошибок polling
     def handle_polling_exception(exception):
