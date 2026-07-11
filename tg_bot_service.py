@@ -151,20 +151,29 @@ class HubController:
 
     def call_api(self, endpoint, method="GET", payload=None):
         url = HUB_URL + endpoint
-        _http = HTTPClient()
+        api_token = os.environ.get("FUNPAYHUB_API_TOKEN", "fhp_api_token_2026_change_me_later").strip()
+        headers = {"X-API-Token": api_token}
+        logger.info(f"Trying to contact Hub: [{method}] {url} headers={headers} payload={payload}")
+        _http = HTTPClient(default_headers=headers)
         try:
             if method == "GET":
                 data = _http.get(url, timeout=15)
             else:
                 data = _http.post(url, json=payload or {}, timeout=15)
+            logger.info(f"Hub replied successfully on {endpoint}: {str(data)[:200]}")
             if data is not None:
                 return True, data
             return False, {"error": "Empty response"}
-        except HTTPClientError:
-            return False, "Hub не отвечает (возможно не запущен)"
+        except HTTPClientError as e:
+            import traceback
+            tb = traceback.format_exc()
+            logger.error(f"Hub timeout/error on {endpoint}: {e}\n{tb}")
+            return False, f"Hub не отвечает:\n{e}\n\nTraceback:\n{tb}"
         except Exception as e:
-            logger.error(f"API call failed {endpoint}: {e}")
-            return False, f"Ошибка: {e}"
+            import traceback
+            tb = traceback.format_exc()
+            logger.error(f"API call failed {endpoint}: {e}\n{tb}")
+            return False, f"Ошибка: {e}\n\nTraceback:\n{tb}"
 
 controller = HubController()
 print("BOT CREATED")  # Added log
@@ -578,6 +587,7 @@ def callback_handler(call):
                 _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
 
         elif cmd == "balance":
+            logger.info("[CALLBACK] balance: Processing query")
             try:
                 ok, result = controller.call_api("/api/seller/balance/full")
                 if ok:
@@ -587,19 +597,25 @@ def callback_handler(call):
                 else:
                     _safe_edit(bot, chat_id, mid, f"❌ {result}", reply_markup=main_menu())
             except Exception as e:
-                logger.error(f"balance error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", parse_mode=None)
+                import traceback
+                tb = traceback.format_exc()
+                logger.error(f"Balance handler failed:\n{tb}")
+                _safe_edit(bot, chat_id, mid, f"❌ Ошибка в обработчике баланса:\n{e}\n\nTraceback:\n{tb}", parse_mode=None)
 
         elif cmd == "report":
+            logger.info("[CALLBACK] report: Processing query")
             try:
                 ok, result = controller.call_api("/api/seller/overview")
                 text = f"📋 Отчёт:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>" if ok else f"❌ {result}"
                 _safe_edit(bot, chat_id, mid, text, main_menu())
             except Exception as e:
-                logger.error(f"report error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
+                import traceback
+                tb = traceback.format_exc()
+                logger.error(f"Report handler failed:\n{tb}")
+                _safe_edit(bot, chat_id, mid, f"❌ Ошибка в обработчике отчёта:\n{e}\n\nTraceback:\n{tb}", main_menu())
 
         elif cmd == "system_status":
+            logger.info("[CALLBACK] system_status: Processing query")
             try:
                 ok, result = controller.call_api("/api/system/health")
                 if ok:
@@ -620,10 +636,13 @@ def callback_handler(call):
                     text = f"❌ Ошибка получения статуса: {result}"
                 _safe_edit(bot, chat_id, mid, text, main_menu())
             except Exception as e:
-                logger.error(f"system_status error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
+                import traceback
+                tb = traceback.format_exc()
+                logger.error(f"System status handler failed:\n{tb}")
+                _safe_edit(bot, chat_id, mid, f"❌ Ошибка в обработчике состояния:\n{e}\n\nTraceback:\n{tb}", main_menu())
 
         elif cmd == "create_lots":
+            logger.info("[CALLBACK] create_lots: Processing query")
             try:
                 ok, result = controller.call_api("/dashboard/api/generate_lots", "POST", {
                     "copies_per_position": 15,
@@ -637,8 +656,10 @@ def callback_handler(call):
                     text = f"❌ {result}"
                 _safe_edit(bot, chat_id, mid, text, main_menu())
             except Exception as e:
-                logger.error(f"create_lots error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
+                import traceback
+                tb = traceback.format_exc()
+                logger.error(f"Create lots handler failed:\n{tb}")
+                _safe_edit(bot, chat_id, mid, f"❌ Ошибка в обработчике создания лотов:\n{e}\n\nTraceback:\n{tb}", main_menu())
 
         elif cmd == "remove_all_lots":
             try:
