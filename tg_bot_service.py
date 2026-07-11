@@ -421,7 +421,7 @@ def cmd_auth(message):
     logger.info(f"/auth from user_id={message.from_user.id}")
     
     if not message.text or len(message.text.split()) < 2:
-        bot.reply_to(message, "❌ Использование: /auth <пароль>")
+        bot.reply_to(message, "❌ Использование: /auth &lt;пароль&gt;")
         return
     
     password = message.text.split()[1]
