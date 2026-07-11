@@ -360,8 +360,16 @@ def get_admin_chat_id() -> str:
 def auth_middleware(func):
     """Декоратор для проверки авторизации"""
     def wrapper(message):
+        logger.debug(f"auth_middleware message: chat_id={message.chat.id} from_user={message.from_user.id if message.from_user else 'None'}")
         admin_id = get_admin_chat_id()
+        # Handle case where from_user might be None (e.g., channel posts)
+        if message.from_user is None:
+            # For messages without a user, we can't authenticate, so let them through
+            # but log for awareness
+            logger.debug("Received message without from_user (possibly channel post)")
+            return func(message)
         if admin_id and str(message.from_user.id) == str(admin_id):
+            logger.debug(f"User {message.from_user.id} is admin {admin_id}")
             return func(message)
         if message.chat.type == "private" and not is_user_authorized(message.from_user.id):
             logger.warning(f"Unauthorized access attempt from user_id={message.from_user.id}")
@@ -376,8 +384,16 @@ def auth_middleware(func):
 def auth_callback_middleware(func):
     """Декоратор для проверки авторизации callback-запросов"""
     def wrapper(call):
+        logger.debug(f"auth_callback_middleware call: chat_id={call.message.chat.id if call.message else 'None'} from_user={call.from_user.id if call.from_user else 'None'}")
         admin_id = get_admin_chat_id()
+        # Handle case where from_user might be None
+        if call.from_user is None:
+            # For callbacks without a user, we can't authenticate, so let them through
+            # but log for awareness
+            logger.debug("Received callback without from_user")
+            return func(call)
         if admin_id and str(call.from_user.id) == str(admin_id):
+            logger.debug(f"Callback user {call.from_user.id} is admin {admin_id}")
             return func(call)
         if not is_user_authorized(call.from_user.id):
             logger.warning(f"Unauthorized callback attempt from user_id={call.from_user.id}")
@@ -467,9 +483,16 @@ def cmd_ping(message):
 @bot.message_handler(func=lambda m: True)
 def debug_all_messages(message):
     try:
-        logger.info(f"UPDATE RECEIVED type={message.content_type} chat_id={message.chat.id} user_id={message.from_user.id}")
-    except Exception:
-        pass
+        user_id = message.from_user.id if message.from_user else "Unknown"
+        logger.info(f"DEBUG_ALL_MESSAGES handler matched: type={message.content_type} chat_id={message.chat.id} user_id={user_id} text={message.text}")
+    except Exception as e:
+        logger.error(f"Error in debug handler: {e}")
+    # We do NOT return anything or register it to prevent further handling if we want it to fall through? Wait, telebot handlers are executed sequentially. The FIRST handler that matches is executed, and subsequent ones are NOT executed. So placing it first with func=lambda m: True will consume ALL messages and command handlers like cmd_start won't get called!
+    # Instead, we should use telebot middlewares or register a listener! Let's register a middleware or a listener so it sees every message without consuming it!
+    # Let's define a listener or middleware instead of message_handler.
+    # TeleBot supports: bot.register_middleware_handler(some_middleware, update_types=['message'])
+    # Or bot.set_update_listener(listener)
+
 
 def _safe_edit(bot, chat_id, message_id, text, reply_markup=None, parse_mode=None):
     """Безопасное редактирование сообщения с обработкой ошибок"""
@@ -890,6 +913,17 @@ def main():
 
     # Запускаем HTTP health check сервер в daemon thread
     _start_health_server()
+
+    # Добавляем слушатель всех апдейтов для отладки
+    def update_listener(messages):
+        for message in messages:
+            logger.info(f"LISTENER: Received message: text={message.text} chat={message.chat.id} user={message.from_user.id if message.from_user else 'None'}")
+    bot.set_update_listener(update_listener)
+
+    @bot.middleware_handler(update_types=['message'])
+    def test_middleware(bot_instance, message):
+        logger.info(f"MIDDLEWARE: Received message: text={message.text} chat={message.chat.id} user={message.from_user.id if message.from_user else 'None'}")
+
 
     # Обработчик ошибок polling
     def handle_polling_exception(exception):
