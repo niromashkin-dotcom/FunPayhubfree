@@ -952,7 +952,6 @@ def main():
     logger.info("Starting infinity_polling in main thread...")
     print("STARTING POLLING")  # Added log
     bot.infinity_polling(
-        exception_handler=handle_polling_exception,
         timeout=60,
         long_polling_timeout=60,
         allowed_updates=['message', 'callback_query']
