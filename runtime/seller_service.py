@@ -71,7 +71,8 @@ def _currency_to_symbol(currency_obj) -> str:
 class SellerService:
     def __init__(self):
         self._account = None
-        self._lock = threading.Lock()
+        self._account_time = 0
+        self._lock = threading.RLock()
         self._cache = {}
         self._cache_time = {}
         self._last_error = None
@@ -218,6 +219,7 @@ class SellerService:
 
     def _reset_state(self):
         self._account = None
+        self._account_time = 0
         self._cache.clear()
         self._cache_time.clear()
         self._auto_lot_id = None
@@ -227,31 +229,35 @@ class SellerService:
         return bool(self.load_credentials().get("golden_key"))
 
     def _get_account(self):
-        if self._account is not None:
-            return self._account
-        creds = self.load_credentials()
-        golden_key = creds.get("golden_key", "")
-        if not golden_key:
-            print("[seller_service] _get_account: no golden_key found in credentials or ENV")
-            return None
-        try:
-            _force_no_proxy()
-            print(f"[seller_service] Connecting to FunPay with golden_key={golden_key[:6]}...")
-            from FunPayAPI.account import Account
-            acc = Account(golden_key=golden_key, user_agent=creds.get("user_agent"), requests_timeout=15, proxy={})
-            if hasattr(acc, "session") and acc.session is not None:
-                acc.session.trust_env = False
-                acc.session.proxies = {}
-            acc.get()
-            self._account = acc
-            self._last_error = None
-            print(f"[seller_service] FunPay connected: user={getattr(acc, 'username', '?')} id={getattr(acc, 'id', '?')}")
-            return acc
-        except Exception as e:
-            self._last_error = _safe_error(e)
-            self._account = None
-            print(f"[seller_service] FunPay connection failed: {self._last_error}")
-            return None
+        with self._lock:
+            # Reconnect after 6 hours to prevent stale/dead sessions
+            if self._account is not None and (time.time() - getattr(self, '_account_time', 0)) < 6 * 3600:
+                return self._account
+            
+            creds = self.load_credentials()
+            golden_key = creds.get("golden_key", "")
+            if not golden_key:
+                print("[seller_service] _get_account: no golden_key found in credentials or ENV")
+                return None
+            try:
+                _force_no_proxy()
+                print(f"[seller_service] Connecting to FunPay with golden_key={golden_key[:6]}...")
+                from FunPayAPI.account import Account
+                acc = Account(golden_key=golden_key, user_agent=creds.get("user_agent"), requests_timeout=15, proxy={})
+                if hasattr(acc, "session") and acc.session is not None:
+                    acc.session.trust_env = False
+                    acc.session.proxies = {}
+                acc.get()
+                self._account = acc
+                self._account_time = time.time()
+                self._last_error = None
+                print(f"[seller_service] FunPay connected: user={getattr(acc, 'username', '?')} id={getattr(acc, 'id', '?')}")
+                return acc
+            except Exception as e:
+                self._last_error = _safe_error(e)
+                self._account = None
+                print(f"[seller_service] FunPay connection failed: {self._last_error}")
+                return None
 
     def _cached(self, key, ttl=CACHE_TTL):
         t = self._cache_time.get(key, 0)

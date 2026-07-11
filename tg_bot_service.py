@@ -156,7 +156,7 @@ class HubController:
             logger.warning(f"FUNPAYHUB_API_TOKEN not set! Hub API calls may fail with 401. HUB_URL={HUB_URL}")
         headers = {"X-API-Token": api_token} if api_token else {}
         logger.info(f"[HUB] [{method}] {url}")
-        _http = HTTPClient(default_headers=headers)
+        _http = HTTPClient(default_headers=headers, max_retries=1)
         try:
             if method == "GET":
                 data = _http.get(url, timeout=15)
