@@ -87,7 +87,7 @@ from web.userdata_api import userdata_bp
 from web.funpay_proxy import funpay_proxy_bp
 from web.assistant_api import assistant_bp
 
-print("TOKEN LOADED") # Added log
+print("TOKEN LOADED")
 
 if getattr(sys, 'frozen', False):
     STATIC = str(INTERNAL / "web" / "static") if INTERNAL.exists() else str(EXE_DIR / "web" / "static")
@@ -114,7 +114,6 @@ except Exception as _e:
     print(f"[funpayhub_main] Plugin bootstrap failed: {_e}")
     import traceback; traceback.print_exc()
 # ===== END PLUGIN SYSTEM BOOTSTRAP =====
-print("BOT CREATED") # Added log
 app.register_blueprint(plugin_mgmt_bp)
 app.register_blueprint(alerts_bp)
 app.register_blueprint(logs_bp)
@@ -202,7 +201,6 @@ def run_flask():
     app.run(host=HOST, port=PORT, debug=False, use_reloader=False)
 
 def main():
-    print("BOT CREATED") # Added log for BOT CREATED stage
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
 

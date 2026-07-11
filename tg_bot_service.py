@@ -11,9 +11,6 @@ Usage:
 Environment:
     TELEGRAM_BOT_TOKEN - bot token (overrides config)
 """
-print("START PROGRAM")  # Added log
-print("TOKEN LOADED")  # Added log
-
 import json
 import os
 import sys
@@ -28,8 +25,6 @@ import telebot
 from runtime.http_client import HTTPClient, HTTPClientError
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import bcrypt
-
-print("TOKEN LOADED")  # Added log
 
 # ============ LOGGING ============
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
@@ -178,8 +173,6 @@ class HubController:
             return False, f"Ошибка: {e}\n\nTraceback:\n{tb}"
 
 controller = HubController()
-print("BOT CREATED")  # Added log
-print("GET_ME SUCCESS")  # Added log
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML", allow_sending_without_reply=True, num_threads=2)
 
 # ============ SIMPLE HTTP SERVER FOR HEALTH CHECK ============
@@ -927,9 +920,6 @@ def callback_handler(call):
         except Exception:
             pass
 
-print("REGISTER HANDLERS")  # Added log
-print("STARTING POLLING")  # Added log
-
 # ============ MAIN ============
 def main():
     """Запуск бота"""
@@ -945,7 +935,7 @@ def main():
     try:
         bot_info = bot.get_me()
         logger.info(f"Bot connected: @{bot_info.username} (id={bot_info.id})")
-        print("GET_ME SUCCESS")  # Added log
+        logger.info("GET_ME SUCCESS")
     except Exception as e:
         logger.error(f"Failed to connect to Telegram API: {e}")
         sys.exit(1)
@@ -999,19 +989,15 @@ def main():
 
     # Запускаем polling в основном потоке
     logger.info("Starting infinity_polling in main thread...")
-    print("STARTING POLLING")  # Added log
     bot.infinity_polling(
         timeout=60,
         long_polling_timeout=60,
         allowed_updates=['message', 'callback_query']
     )
-    print("POLLING EXITED")  # Added log
-print("EXCEPTION")  # Added log
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print("EXCEPTION")  # Added log
         logger.error(f"Fatal error in main: {e}", exc_info=True)
         sys.exit(1)

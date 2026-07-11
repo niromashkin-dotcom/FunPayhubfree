@@ -1,7 +1,8 @@
-# state_api.py
-# State API Wrapper Layer v1
-# UI и плагины работают ТОЛЬКО через этот слой.
-# Cardinal НЕ ЗНАЕТ о StateAPI (инъекция снаружи)
+# state_api.py (DEPRECATED)
+# State API Wrapper Layer v1 — больше не используется.
+# Заменён на HubStateAPI в hub_bootstrap.py.
+# Этот файл содержал привязку к Cardinal и оставлен только для истории.
+# UI и плагины работают ТОЛЬКО через HubStateAPI.
 
 import time
 from typing import Any, Dict, List, Optional
