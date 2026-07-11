@@ -35,6 +35,7 @@ import os
 import threading
 import time
 import logging
+import signal
 from pathlib import Path
 
 print("START PROGRAM")
@@ -197,6 +198,16 @@ HEADLESS = _is_headless()
 # достучаться до контейнера. Локально для desktop-режима оставляем 127.0.0.1.
 HOST = "0.0.0.0" if HEADLESS else os.environ.get("FUNPAYHUB_HOST", "127.0.0.1")
 
+# Graceful shutdown: сигнал для всех фоновых потоков
+_shutdown_event = threading.Event()
+
+def _handle_sigterm(signum, frame):
+    print(f"[funpayhub_main] Received signal {signum}, shutting down...")
+    _shutdown_event.set()
+
+signal.signal(signal.SIGTERM, _handle_sigterm)
+signal.signal(signal.SIGINT, _handle_sigterm)
+
 def run_flask():
     app.run(host=HOST, port=PORT, debug=False, use_reloader=False)
 
@@ -221,10 +232,11 @@ def main():
         # Flask (запущенный выше в отдельном потоке) обслуживает запросы.
         print(f"[funpayhub_main] Headless mode: Flask слушает {HOST}:{PORT}, GUI-окно не запускается")
         try:
-            while True:
-                time.sleep(1)
+            while not _shutdown_event.is_set():
+                _shutdown_event.wait(1)
         except KeyboardInterrupt:
             pass
+        print("[funpayhub_main] Shutdown complete")
         return
 
     try:
@@ -252,8 +264,8 @@ def main():
         import webbrowser
         webbrowser.open(f"http://127.0.0.1:{PORT}/static/dashboard.html")
         try:
-            while True:
-                time.sleep(1)
+            while not _shutdown_event.is_set():
+                _shutdown_event.wait(1)
         except KeyboardInterrupt:
             pass
 

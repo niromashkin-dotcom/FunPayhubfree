@@ -22,7 +22,11 @@ def list_alerts():
     source = request.args.get("source")
     only_unack = request.args.get("only_unack", "false").lower() == "true"
     limit = int(request.args.get("limit", 200))
-    items = []
+    items = nm.get_history()
+    if level:
+        items = [n for n in items if isinstance(n, dict) and n.get("type", "").lower() == level.lower()]
+    if source:
+        items = [n for n in items if isinstance(n, dict) and source.lower() in n.get("source", "").lower()]
     items = items[-limit:]
     return jsonify({"alerts": items, "count": len(items)})
 

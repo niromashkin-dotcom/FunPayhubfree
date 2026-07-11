@@ -119,11 +119,18 @@ class HubController:
         if running:
             return False, "Hub уже запущен"
         try:
-            subprocess.Popen(
-                [sys.executable, HUB_SCRIPT],
-                cwd=os.path.dirname(os.path.abspath(__file__)),
-                creationflags=subprocess.CREATE_NEW_CONSOLE
-            )
+            popen_kwargs = {
+                "cwd": os.path.dirname(os.path.abspath(__file__)),
+            }
+            if sys.platform == "win32":
+                popen_kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
+            else:
+                # Linux: detach from parent process group
+                popen_kwargs["start_new_session"] = True
+                popen_kwargs["stdout"] = subprocess.DEVNULL
+                popen_kwargs["stderr"] = subprocess.DEVNULL
+            
+            subprocess.Popen([sys.executable, HUB_SCRIPT], **popen_kwargs)
             logger.info("Hub started via button")
             return True, "FunPay Hub запущен"
         except Exception as e:
@@ -276,23 +283,25 @@ def _plugin_detail_keyboard(plugin_name, is_active):
 def _format_logs_summary(data):
     if not isinstance(data, dict):
         return "📜 Логи:\nНет данных"
-    lines = data.get("lines", [])
-    if not lines:
+    entries = data.get("logs", [])
+    if not entries:
         return "📜 Логи:\nНет записей"
-    text = f"📜 <b>Логи</b> (фильтр: {data.get('filter', 'all')})\n"
-    for l in lines[:50]:
-        lvl = l.get("level", "INFO")
-        message = l.get("message", "")
-        ts = l.get("timestamp", "")
+    text = f"📜 <b>Логи</b>\n"
+    for e in entries[:50]:
+        lvl = e.get("level", "INFO")
+        message = e.get("message", "")
+        ts = e.get("time", "") or e.get("timestamp", "")
+        source = e.get("source", "")
         if lvl == "ERROR":
-            text += f"🔴 `{ts}` {message}\n"
+            text += f"🔴 `{ts}` [{source}] {message}\n"
         elif lvl == "WARNING":
-            text += f"🟡 `{ts}` {message}\n"
+            text += f"🟡 `{ts}` [{source}] {message}\n"
         elif lvl == "INFO":
-            text += f"🔵 `{ts}` {message}\n"
+            text += f"🔵 `{ts}` [{source}] {message}\n"
         else:
-            text += f"⚪ `{ts}` {message}\n"
-    text += f"\nВсего записей: {data.get('total', len(lines))}"
+            text += f"⚪ `{ts}` [{source}] {message}\n"
+    total = data.get("count", len(entries))
+    text += f"\nВсего записей: {total}"
     return text
 
 def _format_plugins_summary(data):
@@ -494,18 +503,7 @@ def cmd_ping(message):
     except Exception as e:
         logger.error(f"Failed to reply to ping: {e}")
 
-@bot.message_handler(func=lambda m: True)
-def debug_all_messages(message):
-    try:
-        user_id = message.from_user.id if message.from_user else "Unknown"
-        logger.info(f"DEBUG_ALL_MESSAGES handler matched: type={message.content_type} chat_id={message.chat.id} user_id={user_id} text={message.text}")
-    except Exception as e:
-        logger.error(f"Error in debug handler: {e}")
-    # We do NOT return anything or register it to prevent further handling if we want it to fall through? Wait, telebot handlers are executed sequentially. The FIRST handler that matches is executed, and subsequent ones are NOT executed. So placing it first with func=lambda m: True will consume ALL messages and command handlers like cmd_start won't get called!
-    # Instead, we should use telebot middlewares or register a listener! Let's register a middleware or a listener so it sees every message without consuming it!
-    # Let's define a listener or middleware instead of message_handler.
-    # TeleBot supports: bot.register_middleware_handler(some_middleware, update_types=['message'])
-    # Or bot.set_update_listener(listener)
+# debug используется через listener (bot.set_update_listener) — не блокирует команды
 
 
 def _safe_edit(bot, chat_id, message_id, text, reply_markup=None, parse_mode=None):
@@ -586,7 +584,6 @@ def callback_handler(call):
             try:
                 ok, result = controller.call_api("/api/seller/balance/full")
                 if ok:
-                    rub = result.get("available_rub") or result.get("balance") or result.get("total_rub", 0)
                     text = f"💰 Баланс:\n\n{json.dumps(result, indent=2, ensure_ascii=False)}"
                     _safe_edit(bot, chat_id, mid, text, reply_markup=main_menu())
                 else:
@@ -659,14 +656,18 @@ def callback_handler(call):
         elif cmd == "create_lots":
             logger.info("[CALLBACK] create_lots: Processing query")
             try:
-                ok, result = controller.call_api("/dashboard/api/generate_lots", "POST", {
-                    "copies_per_position": 15,
-                    "max_price": 150,
-                    "plugins": ["autosmm", "autodonate"],
-                    "dry_run": True
+                ok, result = controller.call_api("/api/lots/generate", "POST", {
+                    "plugin": "autosmm",
+                    "supplier": "",
+                    "dry_run": True,
+                    "service_id": 0,
+                    "quantity": 1000,
+                    "variations": 15,
+                    "price": 40.0
                 })
                 if ok:
-                    text = f"📦 {result.get('message', 'Лоты созданы')}"
+                    lots_count = len(result.get("lots", []))
+                    text = f"📦 Создано лотов: {lots_count}"
                 else:
                     text = f"❌ {result}"
                 _safe_edit(bot, chat_id, mid, text, main_menu())
@@ -678,11 +679,10 @@ def callback_handler(call):
 
         elif cmd == "remove_all_lots":
             try:
-                ok, result = controller.call_api("/dashboard/api/remove_lots", "POST", {
-                    "plugins": ["autosmm", "autodonate"]
-                })
+                ok, result = controller.call_api("/api/dev/lots/deactivate_all", "POST", {})
                 if ok:
-                    text = f"🗑️ Лоты сняты!\n📈 АвтоСММ: снято {result.get('autosmm_removed', 0)} лотов\n💰 АвтоДонат: снято {result.get('autodonate_removed', 0)} лотов\nИтого: {result.get('total_removed', 0)} лотов снято"
+                    deactivated = result.get("deactivated", 0)
+                    text = f"🗑️ Снято лотов: {deactivated}"
                 else:
                     text = f"❌ {result}"
                 _safe_edit(bot, chat_id, mid, text, main_menu())
@@ -692,9 +692,9 @@ def callback_handler(call):
 
         elif cmd == "auto_create_toggle":
             try:
-                ok, result = controller.call_api("/api/plugins/autosmm/toggle_auto", "POST", {"enabled": True})
+                ok, result = controller.call_api("/api/system/settings/auto_lots", "POST", {"enabled": True})
                 if ok:
-                    enabled = result.get("enabled", False)
+                    enabled = result.get("auto_lots_enabled", False)
                     status = "включено" if enabled else "выключено"
                     text = f"✅ Авто-создание {status}"
                 else:
@@ -706,7 +706,7 @@ def callback_handler(call):
 
         elif cmd == "simulation":
             try:
-                ok, result = controller.call_api("/dashboard/api/run_simulation", "POST")
+                ok, result = controller.call_api("/api/system/simulate", "POST", {})
                 text = f"🧪 Симуляция:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>" if ok else f"❌ {result}"
                 _safe_edit(bot, chat_id, mid, text, main_menu())
             except Exception as e:
@@ -715,10 +715,9 @@ def callback_handler(call):
 
         elif cmd == "logs_view":
             try:
-                ok, result = controller.call_api("/dashboard/api/logs", "GET", payload=None)
+                ok, result = controller.call_api("/api/logs")
                 if ok:
                     text = _format_logs_summary(result)
-                    filters = result.get("available_filters") if isinstance(result, dict) else None
                     kb = _logs_keyboard(result.get("filter") if isinstance(result, dict) else None)
                     _safe_edit(bot, chat_id, mid, text, kb)
                 else:
@@ -729,7 +728,7 @@ def callback_handler(call):
 
         elif cmd == "plugins_panel":
             try:
-                ok, result = controller.call_api("/dashboard/api/plugins/summary", "GET")
+                ok, result = controller.call_api("/api/plugins")
                 if ok and isinstance(result, dict):
                     text = _format_plugins_summary(result)
                     kb = _plugins_keyboard(result)
@@ -742,7 +741,7 @@ def callback_handler(call):
 
         elif cmd == "logs_filter_errors":
             try:
-                ok, result = controller.call_api("/dashboard/api/logs?level=ERROR", "GET")
+                ok, result = controller.call_api("/api/logs?level=ERROR")
                 if ok:
                     text = _format_logs_summary(result)
                     _safe_edit(bot, chat_id, mid, text, _logs_keyboard("ERROR"))
@@ -753,7 +752,7 @@ def callback_handler(call):
 
         elif cmd == "logs_filter_warnings":
             try:
-                ok, result = controller.call_api("/dashboard/api/logs?level=WARNING", "GET")
+                ok, result = controller.call_api("/api/logs?level=WARNING")
                 if ok:
                     text = _format_logs_summary(result)
                     _safe_edit(bot, chat_id, mid, text, _logs_keyboard("WARNING"))
@@ -764,7 +763,7 @@ def callback_handler(call):
 
         elif cmd == "logs_filter_all":
             try:
-                ok, result = controller.call_api("/dashboard/api/logs", "GET")
+                ok, result = controller.call_api("/api/logs")
                 if ok:
                     text = _format_logs_summary(result)
                     _safe_edit(bot, chat_id, mid, text, _logs_keyboard("all"))
@@ -773,12 +772,28 @@ def callback_handler(call):
             except Exception as e:
                 _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
 
+        elif cmd == "logs_refresh":
+            try:
+                ok, result = controller.call_api("/api/logs")
+                if ok:
+                    text = _format_logs_summary(result)
+                    _safe_edit(bot, chat_id, mid, text, _logs_keyboard(result.get("filter") if isinstance(result, dict) else None))
+                else:
+                    _safe_edit(bot, chat_id, mid, f"❌ {result}", main_menu())
+            except Exception as e:
+                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
+
         elif cmd == "ai_agent":
             try:
-                ok, result = controller.call_api("/api/ai/status", "GET")
-                if ok:
+                ok, result = controller.call_api("/api/system/health")
+                if ok and isinstance(result, dict):
                     status = result.get("status", "unknown")
-                    text = f"🤖 <b>AI Agent статус</b>:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
+                    ai_available = bool(result.get("ai_agent", {}).get("available", False))
+                    text = (
+                        f"🤖 <b>AI Agent</b>\n"
+                        f"Статус: {'🟢 АКТИВЕН' if ai_available else '🔴 НЕ АКТИВЕН'}\n"
+                        f"Система: {status}\n"
+                    )
                 else:
                     text = f"❌ {result}"
                 _safe_edit(bot, chat_id, mid, text, main_menu())
@@ -788,11 +803,15 @@ def callback_handler(call):
 
         elif cmd == "wallet":
             try:
-                ok, result = controller.call_api("/api/wallet/balance", "GET")
+                ok, result = controller.call_api("/api/seller/balance/full")
                 if ok:
-                    balance = result.get("balance", 0)
-                    currency = result.get("currency", "₽")
-                    text = f"💳 <b>Кошелёк</b>:\nБаланс: {balance:.2f} {currency}\nДетали:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
+                    balance_data = result.get("balance", {})
+                    rub = balance_data.get("available_rub") or balance_data.get("total_rub", 0)
+                    wallets = result.get("wallets", [])
+                    text = f"💳 <b>Кошелёк</b>:\nБаланс: {rub:.2f} ₽\n"
+                    if wallets:
+                        text += f"Кошельков: {len(wallets)}\n"
+                    text += f"\nДетали:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
                 else:
                     text = f"❌ {result}"
                 _safe_edit(bot, chat_id, mid, text, main_menu())
@@ -801,31 +820,19 @@ def callback_handler(call):
                 _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
 
         elif cmd == "settings":
-            # Placeholder for settings
             text = "⚙ <b>Настройки</b>:\nЗдесь будут настройки бота (в разработке)."
             _safe_edit(bot, chat_id, mid, text, main_menu())
 
-        elif cmd == "logs_refresh":
-            try:
-                ok, result = controller.call_api("/dashboard/api/logs", "GET")
-                if ok:
-                    text = _format_logs_summary(result)
-                    _safe_edit(bot, chat_id, mid, text, _logs_keyboard(result.get("filter") if isinstance(result, dict) else None))
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ {result}", main_menu())
-            except Exception as e:
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
         elif cmd in ("autosmm", "autodonate"):
             try:
-                ok, result = controller.call_api(f"/dashboard/api/plugins/{cmd}/status", "GET")
+                ok, result = controller.call_api(f"/api/plugins/{cmd}")
                 if ok and isinstance(result, dict):
-                    is_active = result.get("enabled", False)
+                    state = result.get("state", "unknown")
+                    config = result.get("config", {})
+                    is_active = config.get("enabled", False) if isinstance(config, dict) else False
                     text = (
                         f"<b>{'📈 АвтоСММ' if cmd == 'autosmm' else '💰 АвтоДонат'}</b>\n"
                         f"Статус: {'🟢 АКТИВЕН' if is_active else '🔴 ОТКЛЮЧЁН'}\n"
-                        f"Обработано заказов: {result.get('orders_count', 0)}\n"
-                        f"Ошибок: {result.get('errors', 0)}\n"
                     )
                     _safe_edit(bot, chat_id, mid, text, _plugin_detail_keyboard(cmd, is_active))
                 else:
@@ -837,9 +844,20 @@ def callback_handler(call):
         elif cmd in ("autosmm_toggle", "autodonate_toggle"):
             plugin = cmd.replace("_toggle", "")
             try:
-                ok, result = controller.call_api(f"/dashboard/api/plugins/{plugin}/toggle", "POST")
+                # Toggle: disable if currently enabled, enable if currently disabled
+                try:
+                    status_ok, status_result = controller.call_api(f"/api/plugins/{plugin}")
+                    current_enabled = False
+                    if status_ok and isinstance(status_result, dict):
+                        config = status_result.get("config", {})
+                        current_enabled = config.get("enabled", False) if isinstance(config, dict) else False
+                except Exception:
+                    current_enabled = False
+
+                action = "disable" if current_enabled else "enable"
+                ok, result = controller.call_api(f"/api/plugins/{plugin}/{action}", "POST")
                 if ok:
-                    is_active = result.get("enabled", False)
+                    is_active = not current_enabled
                     status = "запущен" if is_active else "остановлен"
                     text = f"✅ {'📈 АвтоСММ' if plugin == 'autosmm' else '💰 АвтоДонат'} {status}"
                     kb = _plugin_detail_keyboard(plugin, is_active)
@@ -852,9 +870,9 @@ def callback_handler(call):
         elif cmd in ("autosmm_deactivate", "autodonate_deactivate"):
             plugin = cmd.replace("_deactivate", "")
             try:
-                ok, result = controller.call_api(f"/dashboard/api/plugins/{plugin}/deactivate_lots", "POST")
+                ok, result = controller.call_api(f"/api/dev/lots/deactivate_all", "POST", {})
                 if ok:
-                    text = f"🗑️ Снято лотов: {result.get('removed', 0)} для {'📈 АвтоСММ' if plugin == 'autosmm' else '💰 АвтоДонат'}"
+                    text = f"🗑️ Лоты сняты для всех плагинов"
                     kb = _plugin_detail_keyboard(plugin, True)
                     _safe_edit(bot, chat_id, mid, text, kb)
                 else:
@@ -865,47 +883,17 @@ def callback_handler(call):
         elif cmd in ("autosmm_status", "autodonate_status"):
             plugin = cmd.replace("_status", "")
             try:
-                ok, result = controller.call_api(f"/dashboard/api/plugins/{plugin}/status", "GET")
+                ok, result = controller.call_api(f"/api/plugins/{plugin}")
                 if ok:
                     text = f"📊 Статус {'📈 АвтоСММ' if plugin == 'autosmm' else '💰 АвтоДонат'}:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
-                    kb = _plugin_detail_keyboard(plugin, result.get("enabled", False))
+                    config = result.get("config", {}) if isinstance(result, dict) else {}
+                    is_active = config.get("enabled", False) if isinstance(config, dict) else False
+                    kb = _plugin_detail_keyboard(plugin, is_active)
                     _safe_edit(bot, chat_id, mid, text, kb)
                 else:
                     _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {result}", main_menu())
             except Exception as e:
                 _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "ai_agent":
-            try:
-                ok, result = controller.call_api("/api/ai/status", "GET")
-                if ok:
-                    status = result.get("status", "unknown")
-                    text = f"🤖 <b>AI Agent статус</b>:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
-                else:
-                    text = f"❌ {result}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                logger.error(f"ai_agent error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "wallet":
-            try:
-                ok, result = controller.call_api("/api/wallet/balance", "GET")
-                if ok:
-                    balance = result.get("balance", 0)
-                    currency = result.get("currency", "₽")
-                    text = f"💳 <b>Кошелёк</b>:\nБаланс: {balance:.2f} {currency}\nДетали:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
-                else:
-                    text = f"❌ {result}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                logger.error(f"wallet error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "settings":
-            # Placeholder for settings
-            text = "⚙ Настройки пока не реализованы."
-            _safe_edit(bot, chat_id, mid, text, main_menu())
 
         elif cmd == "back_to_menu":
             _safe_edit(bot, chat_id, mid, "🎮 FunPay Hub Control Panel", main_menu())
