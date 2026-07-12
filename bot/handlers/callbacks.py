@@ -447,7 +447,7 @@ async def cb_plugins_panel(query: CallbackQuery) -> None:
 @router.callback_query(F.data.in_({"autosmm", "autodonate"}))
 async def cb_plugin_detail(query: CallbackQuery) -> None:
     try:
-        plugin = query.data
+        plugin = "autosmm_plugin" if plugin == "autosmm" else "autodonate_plugin" if plugin == "autodonate" else plugin
         data = await api.get(f"/api/plugins/{plugin}")
         text = format_plugin_detail(data, plugin) if isinstance(data, dict) else format_error(f"/api/plugins/{plugin}", data)
         kb = get_plugin_detail_keyboard(
