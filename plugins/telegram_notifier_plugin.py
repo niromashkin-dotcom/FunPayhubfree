@@ -68,15 +68,15 @@ class TelegramNotifierPlugin(PluginBase):
             self.config["chat_id"] = self.get_secret("TELEGRAM_NOTIFIER_CHAT_ID", "").strip()
 
     def on_enable(self):
-        # Старый polling оставлен только для явной миграции с отдельным токеном.
-        # При совпадении токенов два poller получают Telegram 409 Conflict и
-        # кнопки отвечают нестабильно.
         token = self.config.get("bot_token", "").strip()
         control_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
         if self.config.get("enable_polling") and token and token != control_token:
             self._start_polling()
         else:
-            self._log("Notifier работает в режиме уведомлений; polling обслуживает tg_bot_service")
+            if token == control_token and token:
+                self._log("Polling отключён: токен совпадает с control-ботом (защита от 409)")
+            else:
+                self._log("Notifier работает в режиме уведомлений; polling обслуживает control-бот")
 
     def on_disable(self):
         self._stop_polling()
@@ -191,12 +191,8 @@ class TelegramNotifierPlugin(PluginBase):
     # ====================================================================
 
     def _start_polling(self):
-        if self._polling_thread and self._polling_thread.is_alive():
-            return
-        self._polling_stop.clear()
-        self._polling_thread = threading.Thread(target=self._polling_loop, daemon=True, name="TG_Polling")
-        self._polling_thread.start()
-        self._log("Telegram polling started")
+        self._log("Polling отключён в этом плагине. Запускайте getUpdates только через run_bot.py / aiogram, иначе будет 409 Conflict.")
+        return
 
     def _stop_polling(self):
         self._polling_stop.set()
