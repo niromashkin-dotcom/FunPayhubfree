@@ -114,8 +114,10 @@ async def main():
         me = await bot.get_me()
         logger.info("Bot connected: @%s (id=%s)", me.username, me.id)
     except Exception as exc:
-        logger.error("Failed to connect to Telegram: %s", exc)
-        sys.exit(1)
+        # НЕ делаем sys.exit: иначе процесс завершается, порт (для web-сервиса)
+        # закрывается, Render считает старт неуспешным и убивает/перезапускает
+        # инстанс → возникает 409 Conflict у polling. Логируем и идём дальше к polling.
+        logger.error("get_me failed (bot may still work via polling): %s", exc)
 
     try:
         await bot.delete_webhook(drop_pending_updates=True)
