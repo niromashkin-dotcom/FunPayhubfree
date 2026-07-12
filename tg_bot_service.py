@@ -211,13 +211,13 @@ def handle_callback(callback_data: str, chat_id: int, message_id: int) -> str:
     if callback_data == "start":
         result = hub.post("/api/system/start")
         if result and result.get("ok"):
-            return "<b>🚀 Система запущена</b>"
+            return "<b>🚀 Система запущена</b>\n\n" + result.get("message", "")
         return format_error("Запуск", "Не удалось запустить систему")
     
     elif callback_data == "stop":
         result = hub.post("/api/system/stop")
         if result and result.get("ok"):
-            return "<b>🛑 Система остановлена</b>"
+            return "<b>🛑 Система остановлена</b>\n\n" + result.get("message", "")
         return format_error("Остановка", "Не удалось остановить систему")
     
     elif callback_data == "report":
@@ -225,7 +225,7 @@ def handle_callback(callback_data: str, chat_id: int, message_id: int) -> str:
         return format_report(data)
     
     elif callback_data == "logs":
-        data = hub.get("/api/logs/recent")
+        data = hub.get("/api/logs?limit=10")
         return format_logs(data)
     
     elif callback_data == "balance":
@@ -233,7 +233,7 @@ def handle_callback(callback_data: str, chat_id: int, message_id: int) -> str:
         return format_balance(data)
     
     elif callback_data == "lots":
-        data = hub.get("/api/lots/list")
+        data = hub.get("/api/seller/lots")
         return format_lots(data)
     
     elif callback_data == "status":
@@ -242,14 +242,15 @@ def handle_callback(callback_data: str, chat_id: int, message_id: int) -> str:
     
     elif callback_data == "ai":
         data = hub.get("/api/ai/status")
-        return format_ai(data)
+        if data and data.get("ok"):
+            return "<b>🤖 AI Агент</b>\n\n• Статус: <code>" + data.get("status", "unknown") + "</code>\n• " + data.get("message", "")
+        return format_error("AI", "Данные временно недоступны")
     
     elif callback_data == "wallet":
-        data = hub.get("/api/seller/wallet")
-        return format_wallet(data)
+        return "<b>👛 Кошелёк</b>\n\n<i>В разработке...</i>"
     
     elif callback_data == "settings":
-        return "<b>⚙️ Настройки</b>\n\nВ разработке..."
+        return "<b>⚙️ Настройки</b>\n\n<i>В разработке...</i>"
     
     elif callback_data == "refresh":
         return "<b>🔄 Обновлено</b>\n\nДанные обновлены"

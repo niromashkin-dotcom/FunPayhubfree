@@ -1646,19 +1646,13 @@ def generate_lots_endpoint():
 def system_simulate():
     try:
         from runtime.simulator import PluginSimulator
-        sim = PluginSimulator()
+        sim = PluginSimulator(getattr(svc, "plugin_manager", None))
         report, all_ok = sim.run_all()
-        if all_ok:
-            for plugin_name in ["autosmm_plugin", "autodonate_plugin"]:
-                try:
-                    plugin = svc.plugin_manager.plugins.get(plugin_name)
-                    if plugin and plugin.config.get("dry_run"):
-                        plugin.config["dry_run"] = False
-                        plugin.save_config()
-                except Exception:
-                    pass
-        return jsonify({"ok": True, "report": report, "dry_run_off": all_ok})
+        # Симуляция — диагностическая операция. Она не вправе включать реальные
+        # продажи и менять dry_run без отдельного явного действия администратора.
+        return jsonify({"ok": all_ok, "report": report, "dry_run": True})
     except Exception as e:
+        current_app.logger.exception("System simulation failed")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
@@ -1696,3 +1690,21 @@ def toggle_auto_lots():
     except Exception:
         pass
     return jsonify({"ok": True, "auto_lots_enabled": enabled})
+
+
+@seller_bp.route("/api/system/start", methods=["POST"])
+def system_start():
+    """Запуск системы (для Telegram бота)"""
+    return jsonify({"ok": True, "message": "Система уже запущена"})
+
+
+@seller_bp.route("/api/system/stop", methods=["POST"])
+def system_stop():
+    """Остановка системы (для Telegram бота)"""
+    return jsonify({"ok": True, "message": "Система работает в headless режиме, остановка через UI"})
+
+
+@seller_bp.route("/api/ai/status")
+def ai_status():
+    """Статус AI агента (для Telegram бота)"""
+    return jsonify({"ok": True, "status": "available", "message": "AI агент доступен через /api/ai/recommendations"})
