@@ -1,9 +1,0 @@
-{
-  "version": "1.0",
-  "description": "Whitelist авторизованных пользователей Telegram бота",
-  "authorized_users": [
-    6934895652
-  ],
-  "enable_password_auth": true,
-  "password_hash": "{{TELEGRAM_PASSWORD_HASH}}"
-}

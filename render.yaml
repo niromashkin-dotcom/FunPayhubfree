@@ -1,0 +1,40 @@
+services:
+  # Hub: один WSGI worker, так как импорт приложения запускает фоновые задачи.
+  - type: web
+    name: funpayhub
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --threads 4 --bind 0.0.0.0:$PORT funpayhub_main:app
+    healthCheckPath: /health
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: FUNPAYHUB_HEADLESS
+        value: "1"
+      - key: FUNPAYHUB_API_TOKEN
+        sync: false
+      - key: GOLDEN_KEY
+        sync: false
+      - key: TELEGRAM_NOTIFIER_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_NOTIFIER_CHAT_ID
+        sync: false
+
+  # Единственный long-polling worker. Не создавайте второй service с тем же токеном.
+  - type: worker
+    name: funpayhub-telegram
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run_bot.py
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_CHAT_ID
+        sync: false
+      - key: FUNPAYHUB_APP_URL
+        sync: false
+      - key: FUNPAYHUB_API_TOKEN
+        fromService:
+          name: funpayhub
+          type: web
+          envVarKey: FUNPAYHUB_API_TOKEN

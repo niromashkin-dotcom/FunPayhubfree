@@ -187,6 +187,8 @@ def _is_headless() -> bool:
         return True
     if os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_STATIC_URL"):
         return True
+    if os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID"):
+        return True
     if os.environ.get("DYNO"):  # Heroku
         return True
     if sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):

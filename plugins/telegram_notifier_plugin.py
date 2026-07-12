@@ -5,6 +5,7 @@ Real Telegram Bot API integration with inline keyboard, polling, and deduplicati
 import time
 import threading
 import json
+import os
 from typing import Any, Optional, Dict, List
 from plugins.plugin_base import PluginBase
 from runtime.http_client import HTTPClient, HTTPClientError
@@ -16,6 +17,9 @@ DEFAULT_CONFIG = {
     "notify_on": ["new_order", "order_completed", "order_failed", "low_balance", "error"],
     "min_interval_seconds": 30,
     "polling_interval_seconds": 2,
+    # Панель управления обслуживает tg_bot_service.py. Notifier отправляет
+    # уведомления и не должен конкурировать с ним за getUpdates.
+    "enable_polling": False,
 }
 
 MENU_KEYBOARD = {
@@ -64,7 +68,15 @@ class TelegramNotifierPlugin(PluginBase):
             self.config["chat_id"] = self.get_secret("TELEGRAM_NOTIFIER_CHAT_ID", "").strip()
 
     def on_enable(self):
-        self._start_polling()
+        # Старый polling оставлен только для явной миграции с отдельным токеном.
+        # При совпадении токенов два poller получают Telegram 409 Conflict и
+        # кнопки отвечают нестабильно.
+        token = self.config.get("bot_token", "").strip()
+        control_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+        if self.config.get("enable_polling") and token and token != control_token:
+            self._start_polling()
+        else:
+            self._log("Notifier работает в режиме уведомлений; polling обслуживает tg_bot_service")
 
     def on_disable(self):
         self._stop_polling()

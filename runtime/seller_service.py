@@ -241,7 +241,8 @@ class SellerService:
                 return None
             try:
                 _force_no_proxy()
-                print(f"[seller_service] Connecting to FunPay with golden_key={golden_key[:6]}...")
+                # Никогда не выводим cookie/golden_key (даже частично) в логи.
+                print("[seller_service] Connecting to FunPay with configured golden_key...")
                 from FunPayAPI.account import Account
                 acc = Account(golden_key=golden_key, user_agent=creds.get("user_agent"), requests_timeout=15, proxy={})
                 if hasattr(acc, "session") and acc.session is not None:
