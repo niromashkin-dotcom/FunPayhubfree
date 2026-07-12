@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 import os
+import json
+import bcrypt
 
 from aiogram import Router, F
 from aiogram.filters import Command
