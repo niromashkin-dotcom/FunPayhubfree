@@ -1,192 +1,326 @@
 #!/usr/bin/env python3
 """
-tg_bot_service.py
-
-Standalone Telegram Bot Service for FunPay Hub.
-Controls the hub as an independent process (not tied to app runtime).
-
-Usage:
-    python tg_bot_service.py
-
-Environment:
-    TELEGRAM_BOT_TOKEN - bot token (overrides config)
+FunPay Hub Telegram Bot Service
+Новый бот с чистой архитектурой - только HTTP API Hub
 """
-import json
 import os
 import sys
 import time
-import subprocess
-import atexit
-import signal
 import logging
 import threading
-import psutil
-import telebot
-from runtime.http_client import HTTPClient, HTTPClientError
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-import bcrypt
-
-# ============ LOGGING ============
-LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
-LOG_PATH = os.path.join(LOG_DIR, "tg_bot.log")
-
-logger = logging.getLogger("TGBotService")
-logger.setLevel(logging.DEBUG)
-_fh = logging.FileHandler(LOG_PATH, encoding="utf-8")
-_fh.setLevel(logging.DEBUG)
-_fh.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
-logger.addHandler(_fh)
-_ch = logging.StreamHandler(sys.stdout)
-_ch.setLevel(logging.INFO)
-_ch.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
-logger.addHandler(_ch)
-
-# ============ CONFIG ============
-HUB_URL = os.getenv("FUNPAYHUB_APP_URL", "http://127.0.0.1:5000")
-HUB_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "funpayhub_main.py")
-BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tg_bot_service.pid")
-
-if not BOT_TOKEN:
-    try:
-        cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "plugins", "telegram_notifier_plugin.json")
-        with open(cfg_path, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
-        BOT_TOKEN = cfg.get("bot_token", "").strip()
-    except Exception:
-        pass
-
-if not BOT_TOKEN:
-    logger.error("TELEGRAM_BOT_TOKEN not set. Set env var or configs/plugins/telegram_notifier_plugin.json")
-    sys.exit(1)
-
-# ============ PID LOCK ============
-def cleanup_pid():
-    try:
-        if os.path.exists(PID_FILE):
-            with open(PID_FILE, "r", encoding="utf-8") as f:
-                pid = int(f.read().strip())
-            if pid == os.getpid() or not psutil.pid_exists(pid):
-                os.remove(PID_FILE)
-    except Exception:
-        pass
-
-def check_pid_lock():
-    if os.path.exists(PID_FILE):
-        try:
-            with open(PID_FILE, "r", encoding="utf-8") as f:
-                pid = int(f.read().strip())
-            if psutil.pid_exists(pid) and pid != os.getpid():
-                try:
-                    p = psutil.Process(pid)
-                    cmd = " ".join(p.info.get('cmdline', []) or [])
-                    if "tg_bot_service" in cmd:
-                        logger.error(f"Another instance is already running (PID {pid}). Exiting.")
-                        sys.exit(1)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-check_pid_lock()
-with open(PID_FILE, "w", encoding="utf-8") as f:
-    f.write(str(os.getpid()))
-
-def sig_handler(sig, frame):
-    logger.info(f"Received signal {sig}, shutting down...")
-    cleanup_pid()
-    sys.exit(0)
-
-signal.signal(signal.SIGINT, sig_handler)
-signal.signal(signal.SIGTERM, sig_handler)
-atexit.register(cleanup_pid)
-
-# ============ HUB CONTROLLER ============
-class HubController:
-    def is_hub_running(self):
-        for proc in psutil.process_iter(['name', 'cmdline']):
-            try:
-                cmdline = proc.info.get('cmdline') or []
-                if any('funpayhub_main.py' in str(cmd) for cmd in cmdline):
-                    return True, proc.pid
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
-        return False, None
-
-    def start_hub(self):
-        running, _ = self.is_hub_running()
-        if running:
-            return False, "Hub уже запущен"
-        try:
-            popen_kwargs = {
-                "cwd": os.path.dirname(os.path.abspath(__file__)),
-            }
-            if sys.platform == "win32":
-                popen_kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
-            else:
-                # Linux: detach from parent process group
-                popen_kwargs["start_new_session"] = True
-                popen_kwargs["stdout"] = subprocess.DEVNULL
-                popen_kwargs["stderr"] = subprocess.DEVNULL
-            
-            subprocess.Popen([sys.executable, HUB_SCRIPT], **popen_kwargs)
-            logger.info("Hub started via button")
-            return True, "FunPay Hub запущен"
-        except Exception as e:
-            logger.error(f"Failed to start Hub: {e}")
-            return False, f"Ошибка запуска: {e}"
-
-    def stop_hub(self):
-        running, pid = self.is_hub_running()
-        if not running:
-            return False, "Hub не запущен"
-        try:
-            p = psutil.Process(pid)
-            p.terminate()
-            p.wait(timeout=10)
-            logger.info(f"Hub stopped (PID {pid})")
-            return True, "FunPay Hub остановлен"
-        except Exception as e:
-            logger.error(f"Failed to stop Hub: {e}")
-            return False, f"Ошибка остановки: {e}"
-
-    def call_api(self, endpoint, method="GET", payload=None):
-        url = HUB_URL + endpoint
-        api_token = os.environ.get("FUNPAYHUB_API_TOKEN", "").strip()
-        if not api_token:
-            logger.warning(f"FUNPAYHUB_API_TOKEN not set! Hub API calls may fail with 401. HUB_URL={HUB_URL}")
-        headers = {"X-API-Token": api_token} if api_token else {}
-        logger.info(f"[HUB] [{method}] {url}")
-        _http = HTTPClient(default_headers=headers, max_retries=1)
-        try:
-            if method == "GET":
-                data = _http.get(url, timeout=15)
-            else:
-                data = _http.post(url, json=payload or {}, timeout=15)
-            logger.info(f"[HUB] OK {endpoint}: {str(data)[:300]}")
-            if data is not None:
-                return True, data
-            return False, {"error": "Empty response"}
-        except HTTPClientError as e:
-            import traceback
-            tb = traceback.format_exc()
-            logger.error(f"[HUB] ERROR {endpoint}: {e}\n{tb}")
-            return False, f"Hub не отвечает ({url}):\n{e}\n\nTraceback:\n{tb}"
-        except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            logger.error(f"[HUB] EXCEPTION {endpoint}: {e}\n{tb}")
-            return False, f"Ошибка: {e}\n\nTraceback:\n{tb}"
-
-controller = HubController()
-bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML", allow_sending_without_reply=True, num_threads=2)
-
-# ============ SIMPLE HTTP SERVER FOR HEALTH CHECK ============
 import http.server
 import socketserver
+from typing import Optional, Dict, Any
+import requests
 
-class HealthCheckHandler(http.server.SimpleHTTPRequestHandler):
+# ============ CONFIG ============
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8811804174:AAEZyKLzfvd4MZQHdpSFylP5B7YPCcIWkWw")
+ADMIN_CHAT_ID = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "6934895652")
+HUB_URL = os.environ.get("FUNPAYHUB_APP_URL", "http://127.0.0.1:5000")
+HUB_API_TOKEN = os.environ.get("FUNPAYHUB_API_TOKEN", "")
+
+# ============ LOGGING ============
+logger = logging.getLogger("TGBot")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
+logger.addHandler(handler)
+
+# ============ HTTP CLIENT ============
+class HubClient:
+    def __init__(self):
+        self.base_url = HUB_URL
+        self.api_token = HUB_API_TOKEN
+        self.headers = {
+            "Content-Type": "application/json",
+            "X-API-Token": self.api_token
+        }
+    
+    def get(self, path: str) -> Optional[Dict]:
+        try:
+            resp = requests.get(f"{self.base_url}{path}", headers=self.headers, timeout=15)
+            if resp.status_code == 200:
+                return resp.json()
+            logger.error(f"GET {path} failed: {resp.status_code}")
+            return None
+        except Exception as e:
+            logger.error(f"GET {path} error: {e}")
+            return None
+    
+    def post(self, path: str, data: Dict = None) -> Optional[Dict]:
+        try:
+            resp = requests.post(f"{self.base_url}{path}", headers=self.headers, json=data or {}, timeout=30)
+            if resp.status_code == 200:
+                return resp.json()
+            logger.error(f"POST {path} failed: {resp.status_code}")
+            return None
+        except Exception as e:
+            logger.error(f"POST {path} error: {e}")
+            return None
+
+hub = HubClient()
+
+# ============ TELEGRAM API ============
+def send_message(chat_id: int, text: str, reply_markup=None, parse_mode="HTML"):
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": parse_mode
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        resp = requests.post(url, json=payload, timeout=10)
+        return resp.json().get("ok", False)
+    except Exception as e:
+        logger.error(f"Send message error: {e}")
+        return False
+
+def answer_callback(callback_id: str, text: str = None):
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerCallbackQuery"
+        payload = {"callback_query_id": callback_id}
+        if text:
+            payload["text"] = text
+        requests.post(url, json=payload, timeout=5)
+    except Exception:
+        pass
+
+def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None, parse_mode="HTML"):
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+        payload = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text,
+            "parse_mode": parse_mode
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        requests.post(url, json=payload, timeout=10)
+    except Exception as e:
+        logger.error(f"Edit message error: {e}")
+
+# ============ KEYBOARDS ============
+def main_menu():
+    return {
+        "inline_keyboard": [
+            [{"text": "🚀 Старт", "callback_data": "start"}, {"text": "🛑 Стоп", "callback_data": "stop"}],
+            [{"text": "📊 Отчёт", "callback_data": "report"}, {"text": "📜 Логи", "callback_data": "logs"}],
+            [{"text": "💰 Баланс", "callback_data": "balance"}, {"text": "📦 Лоты", "callback_data": "lots"}],
+            [{"text": "⚙️ Состояние", "callback_data": "status"}, {"text": "🤖 AI", "callback_data": "ai"}],
+            [{"text": "👛 Кошелёк", "callback_data": "wallet"}, {"text": "⚙️ Настройки", "callback_data": "settings"}],
+            [{"text": "🔄 Обновить", "callback_data": "refresh"}]
+        ]
+    }
+
+# ============ FORMATTERS ============
+def format_error(title: str, message: str) -> str:
+    return f"<b>❌ {title}</b>\n\n{message}\n\n<i>Попробуйте позже.</i>"
+
+def format_balance(data: Dict) -> str:
+    if not data:
+        return format_error("Баланс", "Данные временно недоступны")
+    
+    balance = data.get("balance", {})
+    total = balance.get("total_rub", 0)
+    available = balance.get("available_rub", 0)
+    
+    return (
+        f"<b>💰 Баланс</b>\n\n"
+        f"• Доступно: <code>{available:.2f} ₽</code>\n"
+        f"• Всего: <code>{total:.2f} ₽</code>"
+    )
+
+def format_report(data: Dict) -> str:
+    if not data:
+        return format_error("Отчёт", "Данные временно недоступны")
+    
+    stats = data.get("stats", {})
+    orders = stats.get("day_count", 0)
+    revenue = stats.get("day_sum", 0)
+    
+    return (
+        f"<b>📊 Отчёт за сегодня</b>\n\n"
+        f"• Заказов: <code>{orders}</code>\n"
+        f"• Выручка: <code>{revenue:.2f} ₽</code>"
+    )
+
+def format_status(data: Dict) -> str:
+    if not data:
+        return format_error("Состояние", "Данные временно недоступны")
+    
+    status = data.get("status", "unknown")
+    plugins = data.get("plugins_count", 0)
+    
+    return (
+        f"<b>⚙️ Состояние системы</b>\n\n"
+        f"• Статус: <code>{status}</code>\n"
+        f"• Плагинов: <code>{plugins}</code> активных"
+    )
+
+def format_lots(data: Dict) -> str:
+    if not data:
+        return format_error("Лоты", "Данные временно недоступны")
+    
+    lots = data.get("lots", [])
+    active = sum(1 for l in lots if l.get("active", False))
+    total = len(lots)
+    
+    return (
+        f"<b>📦 Лоты</b>\n\n"
+        f"• Активных: <code>{active}</code>\n"
+        f"• Всего: <code>{total}</code>"
+    )
+
+def format_logs(data: Dict) -> str:
+    if not data:
+        return format_error("Логи", "Данные временно недоступны")
+    
+    logs = data.get("logs", [])[-10:]  # Последние 10
+    text = "<b>📜 Логи</b>\n\n"
+    for log in logs:
+        text += f"<code>{log}</code>\n"
+    
+    return text
+
+def format_ai(data: Dict) -> str:
+    if not data:
+        return format_error("AI", "Данные временно недоступны")
+    
+    status = data.get("status", "unknown")
+    return (
+        f"<b>🤖 AI Агент</b>\n\n"
+        f"• Статус: <code>{status}</code>"
+    )
+
+def format_wallet(data: Dict) -> str:
+    if not data:
+        return format_error("Кошелёк", "Данные временно недоступны")
+    
+    return (
+        f"<b>👛 Кошелёк</b>\n\n"
+        f"<code>{data}</code>"
+    )
+
+# ============ CALLBACK HANDLERS ============
+def handle_callback(callback_data: str, chat_id: int, message_id: int) -> str:
+    answer_callback(callback_data, "⏳ Обрабатываю...")
+    
+    if callback_data == "start":
+        result = hub.post("/api/system/start")
+        if result and result.get("ok"):
+            return "<b>🚀 Система запущена</b>"
+        return format_error("Запуск", "Не удалось запустить систему")
+    
+    elif callback_data == "stop":
+        result = hub.post("/api/system/stop")
+        if result and result.get("ok"):
+            return "<b>🛑 Система остановлена</b>"
+        return format_error("Остановка", "Не удалось остановить систему")
+    
+    elif callback_data == "report":
+        data = hub.get("/api/seller/sales")
+        return format_report(data)
+    
+    elif callback_data == "logs":
+        data = hub.get("/api/logs/recent")
+        return format_logs(data)
+    
+    elif callback_data == "balance":
+        data = hub.get("/api/seller/balance/full")
+        return format_balance(data)
+    
+    elif callback_data == "lots":
+        data = hub.get("/api/lots/list")
+        return format_lots(data)
+    
+    elif callback_data == "status":
+        data = hub.get("/api/system/health")
+        return format_status(data)
+    
+    elif callback_data == "ai":
+        data = hub.get("/api/ai/status")
+        return format_ai(data)
+    
+    elif callback_data == "wallet":
+        data = hub.get("/api/seller/wallet")
+        return format_wallet(data)
+    
+    elif callback_data == "settings":
+        return "<b>⚙️ Настройки</b>\n\nВ разработке..."
+    
+    elif callback_data == "refresh":
+        return "<b>🔄 Обновлено</b>\n\nДанные обновлены"
+    
+    return format_error("Ошибка", "Неизвестная команда")
+
+# ============ MESSAGE HANDLERS ============
+def handle_message(message: Dict):
+    chat_id = message.get("chat", {}).get("id")
+    text = message.get("text", "")
+    
+    if not chat_id:
+        return
+    
+    # Авторизация
+    if chat_id != int(ADMIN_CHAT_ID):
+        send_message(chat_id, "<b>⛔ Доступ запрещён</b>")
+        return
+    
+    if text.startswith("/start") or text == "/menu":
+        send_message(chat_id, "<b>👋 FunPay Hub Control Panel</b>", reply_markup=main_menu())
+    else:
+        send_message(chat_id, "<b>❓ Неизвестная команда</b>\n\nИспользуйте /start для меню", reply_markup=main_menu())
+
+# ============ POLLING ============
+def polling_loop():
+    logger.info("Starting polling...")
+    offset = 0
+    
+    while True:
+        try:
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
+            params = {"offset": offset + 1, "timeout": 30, "allowed_updates": ["message", "callback_query"]}
+            resp = requests.get(url, params=params, timeout=35)
+            
+            if resp.status_code != 200:
+                logger.error(f"Polling error: {resp.status_code}")
+                time.sleep(5)
+                continue
+            
+            data = resp.json()
+            if not data.get("ok"):
+                logger.error(f"Polling error: {data.get('description')}")
+                time.sleep(5)
+                continue
+            
+            updates = data.get("result", [])
+            for upd in updates:
+                offset = max(offset, upd.get("update_id", 0))
+                
+                if "message" in upd:
+                    handle_message(upd["message"])
+                elif "callback_query" in upd:
+                    cb = upd["callback_query"]
+                    chat_id = cb.get("message", {}).get("chat", {}).get("id")
+                    message_id = cb.get("message", {}).get("message_id")
+                    callback_id = cb.get("id")
+                    callback_data = cb.get("data", "")
+                    
+                    if chat_id and message_id:
+                        result = handle_callback(callback_data, chat_id, message_id)
+                        edit_message(chat_id, message_id, result, reply_markup=main_menu())
+                    
+                    answer_callback(callback_id)
+        
+        except Exception as e:
+            logger.error(f"Polling exception: {e}")
+            time.sleep(5)
+
+# ============ HEALTH CHECK ============
+class HealthHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/":
             self.send_response(200)
@@ -198,794 +332,48 @@ class HealthCheckHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
     
     def log_message(self, format, *args):
-        pass  # Suppress default logging
+        pass
 
-def _start_health_server():
+def start_health_server():
     try:
         port = int(os.environ.get("PORT", "10000"))
         socketserver.TCPServer.allow_reuse_address = True
-        httpd = socketserver.TCPServer(("0.0.0.0", port), HealthCheckHandler)
+        httpd = socketserver.TCPServer(("0.0.0.0", port), HealthHandler)
         t = threading.Thread(target=httpd.serve_forever, daemon=True)
         t.start()
-        logger.info(f"Health check server started on http://0.0.0.0:{port}")
-        return True
+        logger.info(f"Health check server on port {port}")
     except Exception as e:
-        logger.error(f"Health server failed: {e}")
-        return False
-
-# ============ KEYBOARDS ============
-def main_menu():
-    kb = InlineKeyboardMarkup()
-    kb.add(
-        InlineKeyboardButton("🚀 Старт системы", callback_data="start_hub"),
-        InlineKeyboardButton("🛑 Стоп системы", callback_data="stop_hub")
-    )
-    kb.add(
-        InlineKeyboardButton("📊 Отчёт сейчас", callback_data="report"),
-        InlineKeyboardButton("📜 Логи", callback_data="logs_view")
-    )
-    kb.add(
-        InlineKeyboardButton("💰 Баланс", callback_data="balance"),
-        InlineKeyboardButton("🔥 Симуляция", callback_data="simulation")
-    )
-    kb.add(
-        InlineKeyboardButton("⚠️ Состояние", callback_data="system_status"),
-        InlineKeyboardButton("📦 Лоты", callback_data="create_lots")
-    )
-    kb.add(
-        InlineKeyboardButton("🤖 AI агент", callback_data="ai_agent"),
-        InlineKeyboardButton("💳 Кошелёк", callback_data="wallet")
-    )
-    return kb
-
-def _logs_keyboard(current_filter=None):
-    kb = InlineKeyboardMarkup()
-    f = current_filter or "all"
-    kb.add(
-        InlineKeyboardButton("🔴 Только ошибки", callback_data="logs_filter_errors"),
-        InlineKeyboardButton("🟡 Только предупреждения", callback_data="logs_filter_warnings")
-    )
-    kb.add(
-        InlineKeyboardButton("🔵 Все", callback_data="logs_filter_all"),
-        InlineKeyboardButton("🔄 Обновить", callback_data="logs_refresh")
-    )
-    kb.add(InlineKeyboardButton("⬅️ Назад", callback_data="back_to_menu"))
-    return kb
-
-def _plugins_keyboard(plugins_data):
-    kb = InlineKeyboardMarkup()
-    autosmm = plugins_data.get("autosmm", {})
-    autodonate = plugins_data.get("autodonate", {})
-    status_smm = "🟢" if autosmm.get("enabled") else "🔴"
-    status_donate = "🟢" if autodonate.get("enabled") else "🔴"
-    kb.add(
-        InlineKeyboardButton(f"{status_smm} АвтоСММ", callback_data="autosmm"),
-        InlineKeyboardButton(f"{status_donate} АвтоДонат", callback_data="autodonate")
-    )
-    kb.add(InlineKeyboardButton("⬅️ Назад", callback_data="back_to_menu"))
-    return kb
-
-def _plugin_detail_keyboard(plugin_name, is_active):
-    kb = InlineKeyboardMarkup()
-    action = "⏹️ Остановить" if is_active else "▶️ Запустить"
-    kb.add(
-        InlineKeyboardButton(action, callback_data=f"{plugin_name}_toggle")
-    )
-    kb.add(
-        InlineKeyboardButton("🚫 Деактивировать лоты", callback_data=f"{plugin_name}_deactivate")
-    )
-    kb.add(
-        InlineKeyboardButton("📊 Статус", callback_data=f"{plugin_name}_status"),
-        InlineKeyboardButton("⬅️ Назад", callback_data="plugins_panel")
-    )
-    return kb
-
-def _format_logs_summary(data):
-    if not isinstance(data, dict):
-        return "📜 Логи:\nНет данных"
-    entries = data.get("logs", [])
-    if not entries:
-        return "📜 Логи:\nНет записей"
-    text = f"📜 <b>Логи</b>\n"
-    for e in entries[:50]:
-        lvl = e.get("level", "INFO")
-        message = e.get("message", "")
-        ts = e.get("time", "") or e.get("timestamp", "")
-        source = e.get("source", "")
-        if lvl == "ERROR":
-            text += f"🔴 `{ts}` [{source}] {message}\n"
-        elif lvl == "WARNING":
-            text += f"🟡 `{ts}` [{source}] {message}\n"
-        elif lvl == "INFO":
-            text += f"🔵 `{ts}` [{source}] {message}\n"
-        else:
-            text += f"⚪ `{ts}` [{source}] {message}\n"
-    total = data.get("count", len(entries))
-    text += f"\nВсего записей: {total}"
-    return text
-
-def _format_plugins_summary(data):
-    if not isinstance(data, dict):
-        return "🔌 Плагины:\nНет данных"
-    autosmm = data.get("autosmm", {})
-    autodonate = data.get("autodonate", {})
-    lines = ["🔌 <b>Плагины</b>:", ""]
-    for name, info in [("АвтоСММ", autosmm), ("АвтоДонат", autodonate)]:
-        status = "🟢 АКТИВЕН" if info.get("enabled") else "🔴 ОТКЛЮЧЁН"
-        lines.append(f"<b>{name}</b> — {status}")
-        lots = info.get("lots_count", 0)
-        lines.append(f"  Лотов: {lots}")
-    return "\n".join(lines)
-
-# ============ AUTHENTICATION ============
-def load_authorized_users():
-    """Загружает список авторизованных пользователей"""
-    try:
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tg_bot", "authorized_users.json")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return set(data.get("authorized_users", []))
-        return set()
-    except Exception as e:
-        logger.error(f"Failed to load authorized users: {e}")
-        return set()
-
-def is_user_authorized(user_id):
-    """Проверяет, авторизован ли пользователь"""
-    return user_id in load_authorized_users()
-
-def persist_authorized_user(user_id):
-    """Сохраняет user_id в authorized_users.json, чтобы авторизация переживала перезапуск бота"""
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tg_bot", "authorized_users.json")
-    try:
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                config = json.load(f)
-        else:
-            config = {}
-        users = set(config.get("authorized_users", []))
-        users.add(user_id)
-        config["authorized_users"] = sorted(users)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp_path = path + ".tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, path)
-        return True
-    except Exception as e:
-        logger.error(f"Failed to persist authorized user {user_id}: {e}")
-        return False
-
-def get_admin_chat_id() -> str:
-    # Идентификатор чата пользователя-администратора (всегда доверенный)
-    primary_admin = "6934895652"
-    
-    # Сначала проверяем переменную окружения
-    admin_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "").strip()
-    if admin_id:
-        return admin_id
-        
-    # Если в env пусто, проверяем конфиг плагина
-    try:
-        cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "plugins", "telegram_notifier_plugin.json")
-        if os.path.exists(cfg_path):
-            with open(cfg_path, encoding="utf-8") as f:
-                config_id = json.load(f).get("chat_id", "").strip()
-                if config_id:
-                    return config_id
-    except Exception:
-        pass
-        
-    # Возвращаем дефолтного администратора
-    return primary_admin
-
-def auth_middleware(func):
-    """Декоратор для проверки авторизации"""
-    def wrapper(message):
-        logger.debug(f"auth_middleware message: chat_id={message.chat.id} from_user={message.from_user.id if message.from_user else 'None'}")
-        admin_id = get_admin_chat_id()
-        # Handle case where from_user might be None (e.g., channel posts)
-        if message.from_user is None:
-            # For messages without a user, we can't authenticate, so let them through
-            # but log for awareness
-            logger.debug("Received message without from_user (possibly channel post)")
-            return func(message)
-        if admin_id and str(message.from_user.id) == str(admin_id):
-            logger.debug(f"User {message.from_user.id} is admin {admin_id}")
-            return func(message)
-        if message.chat.type == "private" and not is_user_authorized(message.from_user.id):
-            logger.warning(f"Unauthorized access attempt from user_id={message.from_user.id}")
-            try:
-                bot.send_message(message.chat.id, "❌ Доступ запрещён. Вы не авторизованы.")
-            except Exception:
-                pass
-            return
-        return func(message)
-    return wrapper
-
-def auth_callback_middleware(func):
-    """Декоратор для проверки авторизации callback-запросов"""
-    def wrapper(call):
-        logger.debug(f"auth_callback_middleware call: chat_id={call.message.chat.id if call.message else 'None'} from_user={call.from_user.id if call.from_user else 'None'}")
-        admin_id = get_admin_chat_id()
-        # Handle case where from_user might be None
-        if call.from_user is None:
-            # For callbacks without a user, we can't authenticate, so let them through
-            # but log for awareness
-            logger.debug("Received callback without from_user")
-            return func(call)
-        if admin_id and str(call.from_user.id) == str(admin_id):
-            logger.debug(f"Callback user {call.from_user.id} is admin {admin_id}")
-            return func(call)
-        if not is_user_authorized(call.from_user.id):
-            logger.warning(f"Unauthorized callback attempt from user_id={call.from_user.id}")
-            try:
-                bot.answer_callback_query(call.id, "❌ Доступ запрещён. Вы не авторизованы.", show_alert=True)
-            except Exception:
-                pass
-            return
-        return func(call)
-    return wrapper
-
-# ============ HANDLERS ============
-@bot.message_handler(commands=["start", "menu"])
-@auth_middleware
-def cmd_start(message):
-    logger.info(f"START COMMAND RECEIVED user={message.from_user.id} chat={message.chat.id}")
-    try:
-        bot.send_message(message.chat.id, "FunPayHub Control Panel", reply_markup=main_menu())
-    except Exception as e:
-        logger.error(f"Failed to send start reply: {e}")
-
-@bot.message_handler(commands=["auth"])
-def cmd_auth(message):
-    """Авторизация через пароль"""
-    logger.info(f"/auth from user_id={message.from_user.id}")
-    
-    if not message.text or len(message.text.split()) < 2:
-        bot.reply_to(message, "❌ Использование: /auth &lt;пароль&gt;")
-        return
-    
-    password = message.text.split()[1]
-    # Загружаем конфиг
-    try:
-        auth_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tg_bot", "authorized_users.json")
-        if os.path.exists(auth_path):
-            with open(auth_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
-            
-            stored_hash = config.get("password_hash", "")
-            enable_auth = config.get("enable_password_auth", True)
-            
-            if not enable_auth:
-                bot.reply_to(message, "⚠️ Авторизация по паролю отключена в конфигурации.")
-                return
-            
-            # Проверка пароля с использованием bcrypt
-            try:
-                if bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
-                    # Пароль верный — сохраняем пользователя в whitelist на диск,
-                    # чтобы авторизация не терялась при перезапуске бота
-                    user_id = message.from_user.id
-                    if persist_authorized_user(user_id):
-                        logger.info(f"User {user_id} успешно авторизован (сохранено на диск)")
-                        bot.reply_to(
-                            message,
-                            f"✅ Авторизация успешна! Ваш user_id: {user_id}\n"
-                            f"Доступ сохранён и переживёт перезапуск бота."
-                        )
-                    else:
-                        logger.error(f"User {user_id} прошёл пароль, но не удалось сохранить в файл")
-                        bot.reply_to(
-                            message,
-                            "⚠️ Пароль верный, но не удалось сохранить доступ на диск. "
-                            "Проверьте права на запись в tg_bot/authorized_users.json."
-                        )
-                else:
-                    logger.warning(f"Неверный пароль от user_id={message.from_user.id}")
-                    bot.reply_to(message, "❌ Неверный пароль.")
-            except Exception as e:
-                logger.error(f"Ошибка проверки пароля: {e}")
-                bot.reply_to(message, "❌ Ошибка проверки пароля.")
-        else:
-            bot.reply_to(message, "❌ Файл конфигурации авторизации не найден.")
-    except Exception as e:
-        logger.error(f"Auth error: {e}")
-        bot.reply_to(message, "❌ Ошибка авторизации.")
-
-@bot.message_handler(commands=["ping"])
-@auth_middleware
-def cmd_ping(message):
-    logger.info(f"/ping from chat_id={message.chat.id}")
-    try:
-        bot.reply_to(message, "pong ✅")
-    except Exception as e:
-        logger.error(f"Failed to reply to ping: {e}")
-
-# debug используется через listener (bot.set_update_listener) — не блокирует команды
-
-
-def _safe_edit(bot, chat_id, message_id, text, reply_markup=None, parse_mode=None):
-    """Безопасное редактирование сообщения с обработкой ошибок"""
-    try:
-        # Обрезаем до безопасной длины
-        if len(text) > 4000:
-            text = text[:3990] + "\n\n... (обрезано)"
-
-        bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=message_id,
-            text=text,
-            reply_markup=reply_markup,
-            parse_mode=parse_mode  # ВАЖНО: None = без markdown
-        )
-    except Exception as e:
-        error_msg = str(e)
-        # Игнорируем "message is not modified" — это не ошибка
-        if "message is not modified" in error_msg:
-            logger.debug(f"Message not modified (ignored): {error_msg}")
-            return
-        # Игнорируем "message can't be edited" (старые сообщения)
-        if "message can't be edited" in error_msg:
-            logger.warning(f"Cannot edit message {message_id}: {error_msg}")
-            return
-        # Остальные ошибки логируем
-        logger.error(f"edit_message_text failed: {error_msg}")
-
-def _safe_send(chat_id, text, reply_markup=None):
-    try:
-        if len(text) > 4000:
-            text = text[:3990] + "\n\n... (обрезано)"
-        bot.send_message(chat_id, text, reply_markup=reply_markup)
-    except Exception as e:
-        logger.error(f"send_message failed: {e}")
-
-@bot.callback_query_handler(func=lambda call: True)
-@auth_callback_middleware
-def callback_handler(call):
-    try:
-        logger.info(f"Callback: chat_id={call.message.chat.id} data={call.data}")
-        bot.answer_callback_query(call.id)
-        cmd = call.data
-        chat_id = call.message.chat.id
-        mid = call.message.message_id
-
-        if cmd == "start_hub":
-            try:
-                ok, msg = controller.start_hub()
-                text = f"🚀 {msg}"
-                reply = main_menu() if ok else None
-                _safe_edit(bot, chat_id, mid, text, reply)
-            except Exception as e:
-                logger.error(f"start_hub error: {e}")
-                _safe_edit(bot, chat_id, mid, f"🚀 Ошибка: {e}", main_menu())
-
-        elif cmd == "stop_hub":
-            try:
-                ok, msg = controller.stop_hub()
-                text = f"🛑 {msg}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                logger.error(f"stop_hub error: {e}")
-                _safe_edit(bot, chat_id, mid, f"🛑 Ошибка: {e}", main_menu())
-
-        elif cmd == "market_status":
-            try:
-                ok, result = controller.call_api("/api/market/analyze_niches_global", "POST", {"budget": 500, "force_refresh": False})
-                text = f"📊 Ниши (глобальный поиск):\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>" if ok else f"❌ {result}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                logger.error(f"market_status error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "balance":
-            logger.info("[CALLBACK] balance: Processing query")
-            try:
-                ok, result = controller.call_api("/api/seller/balance/full")
-                if ok:
-                    text = f"💰 Баланс:\n\n{json.dumps(result, indent=2, ensure_ascii=False)}"
-                    _safe_edit(bot, chat_id, mid, text, reply_markup=main_menu())
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ {result}", reply_markup=main_menu())
-            except Exception as e:
-                import traceback
-                tb = traceback.format_exc()
-                logger.error(f"Balance handler failed:\n{tb}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка в обработчике баланса:\n{e}\n\nTraceback:\n{tb}", parse_mode=None)
-
-        elif cmd == "report":
-            logger.info("[CALLBACK] report: Processing query")
-            try:
-                ok, result = controller.call_api("/api/seller/overview")
-                text = f"📋 Отчёт:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>" if ok else f"❌ {result}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                import traceback
-                tb = traceback.format_exc()
-                logger.error(f"Report handler failed:\n{tb}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка в обработчике отчёта:\n{e}\n\nTraceback:\n{tb}", main_menu())
-
-        elif cmd == "system_status":
-            logger.info("[CALLBACK] system_status: Processing query")
-            try:
-                ok_health, health = controller.call_api("/api/system/health")
-                ok_overview, overview = controller.call_api("/api/seller/overview")
-                lines = ["🔧 <b>Состояние системы</b>:", ""]
-
-                if ok_overview and isinstance(overview, dict):
-                    connected = overview.get("connected", False)
-                    username = overview.get("username", "?")
-                    fp_emoji = "✅" if connected else "🔴"
-                    lines.append(f"{fp_emoji} <b>FunPay</b>: {'подключён — @' + username if connected else 'не подключён'}")
-                    if not connected:
-                        err = overview.get("error", "Нет авторизации")
-                        lines.append(f"   ⚠️ {err}")
-                else:
-                    lines.append(f"🔴 <b>FunPay</b>: {overview if not ok_overview else 'ошибка'}")
-
-                if ok_health and isinstance(health, dict):
-                    status = health.get("status", "unknown")
-                    status_emoji = "✅" if status == "ok" else ("⚠️" if status == "warning" else "🔴")
-                    lines.append(f"{status_emoji} <b>Хаб</b>: {status}")
-                    issues = health.get("issues", [])
-                    if issues:
-                        lines.append("")
-                        lines.append("⚠️ <b>Предупреждения:</b>")
-                        for issue in issues[:5]:
-                            lvl = issue.get("level", "")
-                            msg = issue.get("message", "")
-                            emo = "❌" if lvl == "error" else "⚠️"
-                            lines.append(f"  {emo} {msg}")
-                    backups = health.get("backups_count", 0)
-                    lines.append(f"💾 <b>Бэкапов:</b> {backups}")
-                else:
-                    lines.append(f"❓ <b>Хаб</b>: не отвечает")
-
-                import time as _t
-                lines.append("")
-                lines.append(f"🕐 <i>{_t.strftime('%Y-%m-%d %H:%M:%S')}</i>")
-                text = "\n".join(lines)
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                import traceback
-                tb = traceback.format_exc()
-                logger.error(f"System status handler failed:\n{tb}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка в обработчике состояния:\n{e}\n\nTraceback:\n{tb}", main_menu())
-
-        elif cmd == "create_lots":
-            logger.info("[CALLBACK] create_lots: Processing query")
-            try:
-                ok, result = controller.call_api("/api/lots/generate", "POST", {
-                    "plugin": "autosmm",
-                    "supplier": "",
-                    "dry_run": True,
-                    "service_id": 0,
-                    "quantity": 1000,
-                    "variations": 15,
-                    "price": 40.0
-                })
-                if ok:
-                    lots_count = len(result.get("lots", []))
-                    text = f"📦 Создано лотов: {lots_count}"
-                else:
-                    text = f"❌ {result}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                import traceback
-                tb = traceback.format_exc()
-                logger.error(f"Create lots handler failed:\n{tb}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка в обработчике создания лотов:\n{e}\n\nTraceback:\n{tb}", main_menu())
-
-        elif cmd == "remove_all_lots":
-            try:
-                ok, result = controller.call_api("/api/dev/lots/deactivate_all", "POST", {})
-                if ok:
-                    deactivated = result.get("deactivated", 0)
-                    text = f"🗑️ Снято лотов: {deactivated}"
-                else:
-                    text = f"❌ {result}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                logger.error(f"remove_all_lots error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "auto_create_toggle":
-            try:
-                ok, result = controller.call_api("/api/system/settings/auto_lots", "POST", {"enabled": True})
-                if ok:
-                    enabled = result.get("auto_lots_enabled", False)
-                    status = "включено" if enabled else "выключено"
-                    text = f"✅ Авто-создание {status}"
-                else:
-                    text = f"❌ {result}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                logger.error(f"auto_create_toggle error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "simulation":
-            try:
-                ok, result = controller.call_api("/api/system/simulate", "POST", {})
-                text = f"🧪 Симуляция:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>" if ok else f"❌ {result}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                logger.error(f"simulation error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "logs_view":
-            try:
-                ok, result = controller.call_api("/api/logs")
-                if ok:
-                    text = _format_logs_summary(result)
-                    kb = _logs_keyboard(result.get("filter") if isinstance(result, dict) else None)
-                    _safe_edit(bot, chat_id, mid, text, kb)
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ Не удалось загрузить логи: {result}", main_menu())
-            except Exception as e:
-                logger.error(f"logs_view error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "plugins_panel":
-            try:
-                ok, result = controller.call_api("/api/plugins")
-                if ok and isinstance(result, dict):
-                    text = _format_plugins_summary(result)
-                    kb = _plugins_keyboard(result)
-                    _safe_edit(bot, chat_id, mid, text, kb)
-                else:
-                    _safe_edit(bot, chat_id, mid, "❌ Не удалось загрузить список плагинов", main_menu())
-            except Exception as e:
-                logger.error(f"plugins_panel error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "logs_filter_errors":
-            try:
-                ok, result = controller.call_api("/api/logs?level=ERROR")
-                if ok:
-                    text = _format_logs_summary(result)
-                    _safe_edit(bot, chat_id, mid, text, _logs_keyboard("ERROR"))
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ {result}", main_menu())
-            except Exception as e:
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "logs_filter_warnings":
-            try:
-                ok, result = controller.call_api("/api/logs?level=WARNING")
-                if ok:
-                    text = _format_logs_summary(result)
-                    _safe_edit(bot, chat_id, mid, text, _logs_keyboard("WARNING"))
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ {result}", main_menu())
-            except Exception as e:
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "logs_filter_all":
-            try:
-                ok, result = controller.call_api("/api/logs")
-                if ok:
-                    text = _format_logs_summary(result)
-                    _safe_edit(bot, chat_id, mid, text, _logs_keyboard("all"))
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ {result}", main_menu())
-            except Exception as e:
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "logs_refresh":
-            try:
-                ok, result = controller.call_api("/api/logs")
-                if ok:
-                    text = _format_logs_summary(result)
-                    _safe_edit(bot, chat_id, mid, text, _logs_keyboard(result.get("filter") if isinstance(result, dict) else None))
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ {result}", main_menu())
-            except Exception as e:
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "ai_agent":
-            try:
-                ok, result = controller.call_api("/api/system/health")
-                if ok and isinstance(result, dict):
-                    status = result.get("status", "unknown")
-                    ai_available = bool(result.get("ai_agent", {}).get("available", False))
-                    text = (
-                        f"🤖 <b>AI Agent</b>\n"
-                        f"Статус: {'🟢 АКТИВЕН' if ai_available else '🔴 НЕ АКТИВЕН'}\n"
-                        f"Система: {status}\n"
-                    )
-                else:
-                    text = f"❌ {result}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                logger.error(f"ai_agent error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "wallet":
-            try:
-                ok, result = controller.call_api("/api/seller/balance/full")
-                if ok:
-                    balance_data = result.get("balance", {})
-                    rub = balance_data.get("available_rub") or balance_data.get("total_rub", 0)
-                    wallets = result.get("wallets", [])
-                    text = f"💳 <b>Кошелёк</b>:\nБаланс: {rub:.2f} ₽\n"
-                    if wallets:
-                        text += f"Кошельков: {len(wallets)}\n"
-                    text += f"\nДетали:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
-                else:
-                    text = f"❌ {result}"
-                _safe_edit(bot, chat_id, mid, text, main_menu())
-            except Exception as e:
-                logger.error(f"wallet error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "settings":
-            text = "⚙ <b>Настройки</b>:\nЗдесь будут настройки бота (в разработке)."
-            _safe_edit(bot, chat_id, mid, text, main_menu())
-
-        elif cmd in ("autosmm", "autodonate"):
-            try:
-                ok, result = controller.call_api(f"/api/plugins/{cmd}")
-                if ok and isinstance(result, dict):
-                    state = result.get("state", "unknown")
-                    config = result.get("config", {})
-                    is_active = config.get("enabled", False) if isinstance(config, dict) else False
-                    text = (
-                        f"<b>{'📈 АвтоСММ' if cmd == 'autosmm' else '💰 АвтоДонат'}</b>\n"
-                        f"Статус: {'🟢 АКТИВЕН' if is_active else '🔴 ОТКЛЮЧЁН'}\n"
-                    )
-                    _safe_edit(bot, chat_id, mid, text, _plugin_detail_keyboard(cmd, is_active))
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ Не удалось загрузить статус: {result}", _plugins_keyboard({}))
-            except Exception as e:
-                logger.error(f"plugin detail error: {e}")
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd in ("autosmm_toggle", "autodonate_toggle"):
-            plugin = cmd.replace("_toggle", "")
-            try:
-                # Toggle: disable if currently enabled, enable if currently disabled
-                try:
-                    status_ok, status_result = controller.call_api(f"/api/plugins/{plugin}")
-                    current_enabled = False
-                    if status_ok and isinstance(status_result, dict):
-                        config = status_result.get("config", {})
-                        current_enabled = config.get("enabled", False) if isinstance(config, dict) else False
-                except Exception:
-                    current_enabled = False
-
-                action = "disable" if current_enabled else "enable"
-                ok, result = controller.call_api(f"/api/plugins/{plugin}/{action}", "POST")
-                if ok:
-                    is_active = not current_enabled
-                    status = "запущен" if is_active else "остановлен"
-                    text = f"✅ {'📈 АвтоСММ' if plugin == 'autosmm' else '💰 АвтоДонат'} {status}"
-                    kb = _plugin_detail_keyboard(plugin, is_active)
-                    _safe_edit(bot, chat_id, mid, text, kb)
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {result}", main_menu())
-            except Exception as e:
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd in ("autosmm_deactivate", "autodonate_deactivate"):
-            plugin = cmd.replace("_deactivate", "")
-            try:
-                ok, result = controller.call_api(f"/api/dev/lots/deactivate_all", "POST", {})
-                if ok:
-                    text = f"🗑️ Лоты сняты для всех плагинов"
-                    kb = _plugin_detail_keyboard(plugin, True)
-                    _safe_edit(bot, chat_id, mid, text, kb)
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {result}", main_menu())
-            except Exception as e:
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd in ("autosmm_status", "autodonate_status"):
-            plugin = cmd.replace("_status", "")
-            try:
-                ok, result = controller.call_api(f"/api/plugins/{plugin}")
-                if ok:
-                    text = f"📊 Статус {'📈 АвтоСММ' if plugin == 'autosmm' else '💰 АвтоДонат'}:\n<pre>{json.dumps(result, indent=2, ensure_ascii=False)}</pre>"
-                    config = result.get("config", {}) if isinstance(result, dict) else {}
-                    is_active = config.get("enabled", False) if isinstance(config, dict) else False
-                    kb = _plugin_detail_keyboard(plugin, is_active)
-                    _safe_edit(bot, chat_id, mid, text, kb)
-                else:
-                    _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {result}", main_menu())
-            except Exception as e:
-                _safe_edit(bot, chat_id, mid, f"❌ Ошибка: {e}", main_menu())
-
-        elif cmd == "back_to_menu":
-            _safe_edit(bot, chat_id, mid, "🎮 FunPay Hub Control Panel", main_menu())
-
-        else:
-            _safe_edit(bot, chat_id, mid, "❓ Неизвестная команда", main_menu())
-
-    except Exception as e:
-        logger.error(f"Callback error: {e}", exc_info=True)
-        try:
-            _safe_edit(bot, call.message.chat.id, call.message.message_id, f"❌ Ошибка: {e}", main_menu())
-        except Exception:
-            pass
+        logger.error(f"Health server error: {e}")
 
 # ============ MAIN ============
 def main():
-    """Запуск бота"""
-    logger.info("Starting Telegram Bot Service...")
+    logger.info("Starting FunPay Hub Telegram Bot...")
+    logger.info(f"Bot Token: {BOT_TOKEN[:10]}...")
+    logger.info(f"Admin Chat ID: {ADMIN_CHAT_ID}")
+    logger.info(f"Hub URL: {HUB_URL}")
     
-    admin_id = get_admin_chat_id()
-    if admin_id:
-        logger.info(f"ADMIN LOADED: chat_id={admin_id}")
-    else:
-        logger.warning("ADMIN NOT LOADED - no admin chat ID configured")
-
-    # Проверяем токен
+    # Проверяем подключение к Hub
     try:
-        bot_info = bot.get_me()
-        logger.info(f"Bot connected: @{bot_info.username} (id={bot_info.id})")
-        logger.info("GET_ME SUCCESS")
+        health = hub.get("/api/system/health")
+        if health:
+            logger.info("✅ Hub connected")
+        else:
+            logger.warning("⚠️ Hub not responding")
     except Exception as e:
-        logger.error(f"Failed to connect to Telegram API: {e}")
-        sys.exit(1)
-
-    # Удаляем webhook (на всякий случай)
+        logger.error(f"Hub connection error: {e}")
+    
+    # Удаляем webhook
     try:
-        bot.remove_webhook()
+        requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook", timeout=5)
         logger.info("Webhook removed")
     except Exception as e:
-        logger.warning(f"Failed to remove webhook: {e}")
-
-    # Проверяем что Hub запущен
-    running, _ = controller.is_hub_running()
-    if running:
-        logger.info("✅ Hub is already running")
-    else:
-        logger.info("ℹ️ Hub is not running. Use Start button.")
-
-    # Запускаем HTTP health check сервер в daemon thread
-    _start_health_server()
-
-    # Добавляем слушатель всех апдейтов для отладки
-    def update_listener(messages):
-        for message in messages:
-            logger.info(f"LISTENER: Received message: text={message.text} chat={message.chat.id} user={message.from_user.id if message.from_user else 'None'}")
-    bot.set_update_listener(update_listener)
-
-
-    # Обработчик ошибок polling
-    def handle_polling_exception(exception):
-        error_msg = str(exception)
-        if "409" in error_msg and "Conflict" in error_msg:
-            logger.error("🚨 CONFLICT detected! Killing other instances...")
-            # Пытаемся убить другие процессы
-            current_pid = os.getpid()
-            for proc in psutil.process_iter(['pid', 'cmdline']):
-                try:
-                    if proc.pid != current_pid:
-                        cmdline = ' '.join(proc.cmdline() or [])
-                        if 'tg_bot_service' in cmdline:
-                            logger.info(f"💀 Killing PID {proc.pid}")
-                            proc.kill()
-                except Exception:
-                    pass
-            time.sleep(3)
-            return True  # Продолжить polling
-
-        logger.error(f"Polling error: {exception}")
-        time.sleep(5)
-        return True
-
-    # Запускаем polling в основном потоке
-    logger.info("Starting infinity_polling in main thread...")
-    bot.infinity_polling(
-        timeout=60,
-        long_polling_timeout=60,
-        allowed_updates=['message', 'callback_query']
-    )
+        logger.warning(f"Webhook removal error: {e}")
+    
+    # Запускаем health check
+    start_health_server()
+    
+    # Запускаем polling
+    polling_loop()
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logger.error(f"Fatal error in main: {e}", exc_info=True)
-        sys.exit(1)
+    main()
