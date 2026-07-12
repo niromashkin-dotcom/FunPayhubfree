@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import aiohttp
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 logger = logging.getLogger("bot.services.ai_agent")
 
@@ -190,6 +191,62 @@ class AIAgentService:
                         "confidence": 30,
                         "action": "manual",
                     }
+
+    def list_project_files(self, subdir: str = "", limit: int = 200) -> List[str]:
+        """Вернуть список файлов проекта (полный доступ к файловой системе проекта)."""
+        base = (self._project_root / subdir).resolve()
+        if not str(base).startswith(str(self._project_root)) or not base.exists():
+            return []
+        skip = {".git", "__pycache__", "venv", "venv2", "node_modules", ".kilo"}
+        files: List[str] = []
+        for path in base.rglob("*"):
+            if any(part in skip for part in path.parts):
+                continue
+            if path.is_file():
+                try:
+                    rel = path.relative_to(self._project_root).as_posix()
+                except ValueError:
+                    continue
+                files.append(rel)
+                if len(files) >= limit:
+                    break
+        return files
+
+    async def scan_project_files(self, patterns: Optional[List[str]] = None,
+                                 max_files: int = 20) -> List[Dict[str, Any]]:
+        """Просканировать исходные файлы проекта и вернуть найденные проблемы.
+
+        Даёт агенту полный доступ к анализу файлов, а не только логов.
+        """
+        patterns = patterns or ["*.py"]
+        results: List[Dict[str, Any]] = []
+        checked = 0
+        skip = {".git", "__pycache__", "venv", "venv2", "node_modules", ".kilo"}
+        for pattern in patterns:
+            for path in self._project_root.rglob(pattern):
+                if checked >= max_files:
+                    break
+                if any(part in skip for part in path.parts):
+                    continue
+                if not path.is_file():
+                    continue
+                try:
+                    rel = path.relative_to(self._project_root).as_posix()
+                except ValueError:
+                    continue
+                checked += 1
+                try:
+                    content = path.read_text(encoding="utf-8", errors="ignore")
+                except Exception:
+                    continue
+                markers = []
+                for i, line in enumerate(content.splitlines()[:1000], 1):
+                    if any(kw in line for kw in ["TODO", "FIXME", "HACK", "BUG",
+                                                  "XXX", "raise NotImplementedError"]):
+                        markers.append(f"L{i}: {line.strip()[:100]}")
+                if markers:
+                    results.append({"file": rel, "markers": markers[:10]})
+        return results
 
     async def analyze_project(self, file_path: str) -> Dict[str, Any]:
         """Проанализировать конкретный файл проекта."""

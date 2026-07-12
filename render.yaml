@@ -35,11 +35,29 @@ services:
         sync: false
       - key: FUNPAYHUB_API_TOKEN
         sync: false
+      # --- AI: основной провайдер Mistral AI (приоритет) ---
       - key: LLM_API_KEY
         sync: false
       - key: LLM_API_URL
-        value: "http://127.0.0.1:31415/v1"
+        value: "https://api.mistral.ai/v1/chat/completions"
+      - key: LLM_MODEL
+        value: "mistral-small-latest"
+      # --- AI: резервный провайдер (freellmapi) на случай ошибок соединения ---
+      - key: LLM_API_KEY_2
+        sync: false
+      - key: LLM_API_URL_2
+        value: "http://127.0.0.1:31415/v1/chat/completions"
+      - key: LLM_MODEL_2
+        value: "freellm-24ba17fbc6eef0477edbfc9755b0964bbf476eba8b3469cd"
+      # --- GitHub (авто-коммит патчей) ---
       - key: GITHUB_TOKEN
         sync: false
+      - key: GITHUB_REPO
+        value: "niromashkin-dotcom/FunPayhubfree"
+      - key: GITHUB_BRANCH
+        value: "main"
+      # --- Render (авто-деплой) ---
       - key: RENDER_API_KEY
         sync: false
+      - key: RENDER_SERVICE_ID
+        value: "srv-d98e24navr4c739cq19g"

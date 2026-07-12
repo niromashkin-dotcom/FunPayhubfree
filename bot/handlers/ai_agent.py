@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import logging
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters import Command
+from aiogram.types import (
+    CallbackQuery,
+    Message,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 
 from bot.services import ai_agent_service
 
@@ -49,11 +55,50 @@ def _get_ai_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📜 Логи", callback_data="ai_logs"),
         ],
         [
-            InlineKeyboardButton(text="🔔 Уведомления", callback_data="ai_notifications"),
+            InlineKeyboardButton(text="🔍 Анализ файлов", callback_data="ai_scan_files"),
             InlineKeyboardButton(text="⚙️ Настройки", callback_data="ai_settings"),
         ],
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_menu")],
     ])
+
+
+@router.callback_query(F.data == "ai_scan_files")
+async def cb_ai_scan_files(query: CallbackQuery) -> None:
+    await query.answer("Сканирую файлы проекта...")
+    results = await ai_agent_service.scan_project_files()
+    lines = ["🔍 <b>Анализ файлов проекта</b>", "─" * 25]
+    if not results:
+        lines.append("Проблемных меток (TODO/FIXME/BUG) не найдено ✅")
+    else:
+        for item in results[:10]:
+            lines.append(f"📁 <b>{item['file']}</b>")
+            for m in item["markers"][:3]:
+                lines.append(f"  • {m}")
+    lines.append("")
+    lines.append("Полный анализ файла: <code>/analyze путь/к/файлу.py</code>")
+    await query.message.edit_text(text="\n".join(lines)[:4000], reply_markup=_get_ai_keyboard())
+
+
+@router.message(Command("analyze"))
+async def cmd_analyze(message: Message) -> None:
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Использование: <code>/analyze путь/к/файлу.py</code>")
+        return
+    file_path = parts[1].strip()
+    await message.answer(f"🔍 Анализирую <code>{file_path}</code>...")
+    result = await ai_agent_service.analyze_project(file_path)
+    if result.get("error"):
+        await message.answer(f"⚠️ {result['error']}")
+        return
+    text = (
+        f"🤖 <b>Анализ файла</b>\n"
+        f"📁 <b>Файл:</b> {result.get('file', file_path)}\n"
+        f"🔍 <b>Диагноз:</b> {result.get('diagnosis', '—')}\n"
+        f"💊 <b>Рекомендация:</b> {result.get('patch', '—')}\n"
+        f"📊 <b>Уверенность:</b> {result.get('confidence', 0)}%"
+    )
+    await message.answer(text[:4000])
 
 
 @router.callback_query(F.data.startswith("apply_patch_"))

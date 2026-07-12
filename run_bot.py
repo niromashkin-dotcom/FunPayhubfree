@@ -54,13 +54,16 @@ async def main():
                 "name": "primary",
                 "api_key": os.environ.get("LLM_API_KEY", ""),
                 "api_url": os.environ.get("LLM_API_URL", ""),
-                "model": "freellm-24ba17fbc6eef0477edbfc9755b0964bbf476eba8b3469cd",
+                "model": os.environ.get("LLM_MODEL", "mistral-small-latest"),
             },
             {
                 "name": "secondary",
                 "api_key": os.environ.get("LLM_API_KEY_2", ""),
                 "api_url": os.environ.get("LLM_API_URL_2", ""),
-                "model": os.environ.get("LLM_MODEL_2", "gpt-4o-mini"),
+                "model": os.environ.get(
+                    "LLM_MODEL_2",
+                    "freellm-24ba17fbc6eef0477edbfc9755b0964bbf476eba8b3469cd",
+                ),
             },
         ],
         github_token=os.environ.get("GITHUB_TOKEN", ""),
@@ -86,6 +89,7 @@ async def main():
         {"command": "start", "description": "Главное меню"},
         {"command": "menu", "description": "Главное меню"},
         {"command": "ping", "description": "Проверка связи"},
+        {"command": "analyze", "description": "AI-анализ файла проекта"},
         {"command": "auth", "description": "Авторизация по паролю"},
     ])
 
