@@ -6,6 +6,12 @@ cryptography>=41.0.7,<50
 python-dotenv>=1.0.0,<2
 schedule>=1.2.0,<2
 pydantic>=2.5.0,<3
+bcrypt>=4.1.2,<5
+psutil>=5.9.8,<6
+bcrypt>=4.1.2,<5
+psutil>=5.9.8,<6
+bcrypt>=4.1.2,<5
+psutil>=5.9.8,<6
 
 # Обязательны для FunPayAPI (скрапинг funpay.com) — без них account.py не импортируется
 beautifulsoup4>=4.12.3,<5
