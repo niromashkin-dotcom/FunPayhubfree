@@ -126,6 +126,8 @@ class AutoBumpPlugin(PluginBase):
     def __init__(self, module_name: str, state_api, event_bus):
         super().__init__(module_name, state_api, event_bus)
         self.http_client = HTTPClient()
+        from bot.config import get_hub_url
+        self.hub_url = get_hub_url()
         self._thread = None
         self._stop_event = threading.Event()
         self._last_bump_per_cat = {}     # cat_id -> timestamp of last bump
@@ -252,7 +254,7 @@ class AutoBumpPlugin(PluginBase):
 
         # Auto-detect from active lots
         try:
-            data = self.http_client.get("http://127.0.0.1:5000/api/seller/lots", timeout=10)
+            data = self.http_client.get(self.hub_url + "/api/seller/lots", timeout=10)
             lots = data.get("lots") if isinstance(data, dict) else data
             if not isinstance(lots, list):
                 return []
@@ -277,7 +279,7 @@ class AutoBumpPlugin(PluginBase):
 
         try:
             self.http_client.post(
-                f"http://127.0.0.1:5000/api/seller/categories/{cat_id}/raise",
+                self.hub_url + f"/api/seller/categories/{cat_id}/raise",
                 headers={"Content-Type": "application/json"},
                 json={},
                 timeout=15

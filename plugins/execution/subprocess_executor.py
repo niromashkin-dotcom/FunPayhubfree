@@ -59,13 +59,13 @@ class SubprocessExecutor(PluginExecutor):
         if self._process_manager:
             self._process_manager.unregister(plugin_name)
 
-    def execute_event(self, plugin, event, **kwargs):
+    def execute_event(self, plugin, event_name, event, **kwargs):
         plugin_name = plugin.module_name
         if plugin_name not in self._processes:
             self.start_plugin(plugin)
         worker = self._processes[plugin_name]
         try:
-            worker["event_queue"].put(("event", event))
+            worker["event_queue"].put(("event", event_name, event))
             result = worker["result_queue"].get(timeout=30)
             if isinstance(result, Exception):
                 raise result

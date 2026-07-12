@@ -170,8 +170,9 @@ class EmergencyManager:
         """Снять лоты одного поставщика."""
         try:
             from runtime.http_client import HTTPClient
+            from bot.config import get_hub_url
             hc = HTTPClient()
-            hc.post("http://127.0.0.1:5000/api/seller/lots/deactivate",
+            hc.post(f"{get_hub_url()}/api/seller/lots/deactivate",
                      json={"supplier": supplier}, timeout=10)
             logger.info(f"[Emergency] Lots deactivated for {supplier}")
         except Exception:
@@ -181,8 +182,9 @@ class EmergencyManager:
         """Снять ВСЕ лоты."""
         try:
             from runtime.http_client import HTTPClient
+            from bot.config import get_hub_url
             hc = HTTPClient()
-            hc.post("http://127.0.0.1:5000/api/seller/lots/deactivate",
+            hc.post(f"{get_hub_url()}/api/seller/lots/deactivate",
                      json={"all": True}, timeout=10)
             logger.info("[Emergency] All lots deactivated")
         except Exception:
@@ -192,8 +194,9 @@ class EmergencyManager:
         """Восстановить все лоты."""
         try:
             from runtime.http_client import HTTPClient
+            from bot.config import get_hub_url
             hc = HTTPClient()
-            hc.post("http://127.0.0.1:5000/api/seller/lots/activate",
+            hc.post(f"{get_hub_url()}/api/seller/lots/activate",
                      json={"all": True}, timeout=10)
             logger.info("[Emergency] All lots reactivated")
         except Exception:

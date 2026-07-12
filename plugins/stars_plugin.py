@@ -45,6 +45,8 @@ class StarsPlugin(PluginBase):
     def __init__(self, module_name, state_api, event_bus):
         super().__init__(module_name, state_api, event_bus)
         self.http_client = HTTPClient(max_retries=3)
+        from bot.config import get_hub_url
+        self.hub_url = get_hub_url()
         self._data_dir = self._get_data_dir()
         # Мы не сохраняем event_bus и state_api как атрибуты, но можем при необходимости
 
@@ -200,7 +202,7 @@ class StarsPlugin(PluginBase):
         try:
             # Следуем образцу autodonate_plugin.py: отправляем на локальный эндпоинт
             self.http_client.post(
-                f"http://127.0.0.1:5000/api/seller/chats/{chat_id}/send",
+                self.hub_url + f"/api/seller/chats/{chat_id}/send",
                 json={"text": text, "dry_run": False},
                 timeout=10,
             )

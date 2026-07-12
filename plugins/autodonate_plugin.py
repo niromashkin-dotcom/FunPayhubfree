@@ -125,6 +125,8 @@ class AutoDonatePlugin(PluginBase):
     def __init__(self, module_name, state_api, event_bus):
         super().__init__(module_name, state_api, event_bus)
         self.http_client = HTTPClient()
+        from bot.config import get_hub_url
+        self.hub_url = get_hub_url()
         self._data_dir = self._get_data_dir()
         self._orders_file = self._data_dir / "donate_orders.json"
         self._throttle = {}
@@ -580,10 +582,10 @@ class AutoDonatePlugin(PluginBase):
     def _send_message(self, chat_id, text):
         try:
             if str(chat_id) == "sandbox-test-chat":
-                self.http_client.post("http://127.0.0.1:5000/api/dev/sandbox/seller_send",
+                self.http_client.post(self.hub_url + "/api/dev/sandbox/seller_send",
                               json={"text": text, "source": "donate"}, timeout=5)
                 return
-            self.http_client.post("http://127.0.0.1:5000/api/seller/chats/{}/send".format(chat_id),
+            self.http_client.post(self.hub_url + "/api/seller/chats/{}/send".format(chat_id),
                               json={"text": text, "dry_run": False}, timeout=10)
         except Exception as e:
             self._log(f"send_message err: {e}", level="warn")

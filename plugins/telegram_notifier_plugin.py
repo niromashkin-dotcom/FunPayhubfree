@@ -54,6 +54,8 @@ class TelegramNotifierPlugin(PluginBase):
     def __init__(self, module_name, state_api, event_bus):
         super().__init__(module_name, state_api, event_bus)
         self.http_client = HTTPClient()
+        from bot.config import get_hub_url
+        self.hub_url = get_hub_url()
         self._last_sent = 0
         self._lock = threading.Lock()
         self._polling_thread = None
@@ -88,35 +90,31 @@ class TelegramNotifierPlugin(PluginBase):
     # EVENT NOTIFICATIONS
     # ====================================================================
 
-    def on_event(self, event):
-        try:
-            event_type = getattr(event, "type", None) or (event.get("type") if isinstance(event, dict) else None)
-        except Exception:
-            event_type = None
-
+    def on_event(self, event_name, event):
         events = self.config.get("notify_on", DEFAULT_CONFIG["notify_on"])
-        if event_type not in events:
+        if event_name not in events:
             return
 
         text = None
-        if event_type == "new_order":
+        if event_name == "new_order":
             title = event.get("title", "") if isinstance(event, dict) else getattr(event, "title", "")
             buyer = event.get("buyer", "") if isinstance(event, dict) else getattr(event, "buyer", "")
             text = f"🔔 Новый заказ: {title} от {buyer}"
-        elif event_type == "order_completed":
+        elif event_name == "order_completed":
             title = event.get("title", "") if isinstance(event, dict) else getattr(event, "title", "")
             text = f"✅ Заказ выполнен: {title}"
-        elif event_type == "order_failed":
+        elif event_name == "order_failed":
             msg = event.get("message", "Ошибка") if isinstance(event, dict) else getattr(event, "message", "Ошибка")
             text = f"❌ Ошибка: {msg}"
-        elif event_type == "low_balance":
+        elif event_name == "low_balance":
             balance = event.get("balance", "?") if isinstance(event, dict) else getattr(event, "balance", "?")
             text = f"⚠️ Низкий баланс: {balance}"
-        elif event_type == "error":
+        elif event_name == "error":
             msg = event.get("message", "Unknown error") if isinstance(event, dict) else getattr(event, "message", "Unknown error")
             text = f"❌ Ошибка: {msg}"
 
         if text:
+            text = f"[{event_name}] " + text
             self._send_telegram(text)
 
     # ====================================================================
@@ -281,7 +279,7 @@ class TelegramNotifierPlugin(PluginBase):
 
     def _handle_generate_lots(self) -> str:
         try:
-            j = self.http_client.post("http://127.0.0.1:5000/api/lots/generate", json={"dry_run": False}, timeout=120)
+            j = self.http_client.post(self.hub_url + "/api/lots/generate", json={"dry_run": False}, timeout=120)
             if j.get("ok"):
                 lots = j.get("lots", [])
                 autosmm = sum(1 for l in lots if l.get("marker", "").startswith("[AS#"))
@@ -309,7 +307,7 @@ class TelegramNotifierPlugin(PluginBase):
 
     def _handle_deactivate_lots(self) -> str:
         try:
-            j = self.http_client.post("http://127.0.0.1:5000/api/dev/lots/deactivate_all", json={}, timeout=30)
+            j = self.http_client.post(self.hub_url + "/api/dev/lots/deactivate_all", json={}, timeout=30)
             count = j.get("deactivated", 0)
             return f"⏹ Снято лотов: {count} шт"
         except Exception as e:
@@ -317,7 +315,7 @@ class TelegramNotifierPlugin(PluginBase):
 
     def _handle_toggle_auto_lots(self) -> str:
         try:
-            j = self.http_client.post("http://127.0.0.1:5000/api/system/settings/auto_lots", json={}, timeout=10)
+            j = self.http_client.post(self.hub_url + "/api/system/settings/auto_lots", json={}, timeout=10)
             state = j.get("auto_lots_enabled", False)
             return f"🔄 Авто-создание лотов: {'ВКЛ' if state else 'ВЫКЛ'}"
         except Exception as e:
@@ -325,7 +323,7 @@ class TelegramNotifierPlugin(PluginBase):
 
     def _handle_simulate(self) -> str:
         try:
-            j = self.http_client.post("http://127.0.0.1:5000/api/system/simulate", json={}, timeout=180)
+            j = self.http_client.post(self.hub_url + "/api/system/simulate", json={}, timeout=180)
             report = j.get("report", "Нет данных")
             dry_run_off = j.get("dry_run_off", False)
             msg = f"🧪 РЕЗУЛЬТАТЫ СИМУЛЯЦИИ\n\n{report}"
@@ -348,18 +346,18 @@ class TelegramNotifierPlugin(PluginBase):
 
     def _api_get(self, path: str) -> Any:
         try:
-            return self.http_client.get(f"http://127.0.0.1:5000{path}", timeout=15)
+            return self.http_client.get(self.hub_url + f"{path}", timeout=15)
         except Exception:
             pass
         return None
 
     def _build_market_report(self) -> str:
         try:
-            heatmap = self.http_client.post("http://127.0.0.1:5000/api/market/heatmap", json={}, timeout=30) or {}
+            heatmap = self.http_client.post(self.hub_url + "/api/market/heatmap", json={}, timeout=30) or {}
             
-            niches = self.http_client.get("http://127.0.0.1:5000/api/market/niches", timeout=15) or {}
+            niches = self.http_client.get(self.hub_url + "/api/market/niches", timeout=15) or {}
             
-            competitors = self.http_client.get("http://127.0.0.1:5000/api/market/competitors", timeout=15) or {}
+            competitors = self.http_client.get(self.hub_url + "/api/market/competitors", timeout=15) or {}
             
             niche_list = niches.get("niches", []) if isinstance(niches, dict) else []
             comp_list = competitors.get("competitors", []) if isinstance(competitors, dict) else []

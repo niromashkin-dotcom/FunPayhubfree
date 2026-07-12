@@ -47,3 +47,22 @@ def get_bot_config() -> BotConfig:
         hub_url=hub_url,
         api_token=api_token,
     )
+
+
+def get_hub_url() -> str:
+    """Возвращает базовый URL хаба (FunPay Hub) из переменной окружения.
+
+    Приоритет:
+      1. FUNPAYHUB_APP_URL — явный адрес хаба (для бота-worker это внешний URL хаба,
+         например https://funpayhub.onrender.com).
+      2. RENDER_EXTERNAL_URL — Render автоматически выставляет его для web-сервиса,
+         поэтому хаб может обращаться к самому себе без хардкода порта.
+      3. http://127.0.0.1:5000 — локальная разработка по умолчанию.
+    """
+    url = os.environ.get("FUNPAYHUB_APP_URL")
+    if url:
+        return url.strip()
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+    if render_url:
+        return render_url.strip()
+    return "http://127.0.0.1:5000"

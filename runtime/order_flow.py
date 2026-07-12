@@ -144,8 +144,9 @@ class OrderFlowManager:
                 return True
             # Баланс поставщика получаем из health-check или seller_service
             from runtime.http_client import HTTPClient
+            from bot.config import get_hub_url
             hc = HTTPClient()
-            data = hc.get(f"http://127.0.0.1:5000/api/seller/balance/suppliers", timeout=5)
+            data = hc.get(f"{get_hub_url()}/api/seller/balance/suppliers", timeout=5)
             if data and isinstance(data, dict):
                 sup_balance = float(data.get(supplier, {}).get("balance", 0))
                 return sup_balance > 0
@@ -157,8 +158,9 @@ class OrderFlowManager:
         """Снять с продажи лоты конкретного поставщика."""
         try:
             from runtime.http_client import HTTPClient
+            from bot.config import get_hub_url
             hc = HTTPClient()
-            hc.post("http://127.0.0.1:5000/api/seller/lots/deactivate",
+            hc.post(f"{get_hub_url()}/api/seller/lots/deactivate",
                      json={"supplier": supplier}, timeout=10)
         except Exception:
             pass

@@ -162,7 +162,7 @@ def _start_background_worker(seller_service, event_bus, interval_sec=60, verbose
     return t
 
 
-def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True):
+def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_url: str = None):
     """Initialize plugin system without Cardinal / second Flask.
     Returns: (runtime_controller, runtime_log, notification_manager, event_bus)
     Any of these may be None if init failed for that part."""
@@ -215,7 +215,9 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True):
     plugin_manager = None
     try:
         from plugins.plugin_manager import PluginManager
-        state_api = HubStateAPI()
+        if hub_url is None:
+            hub_url = os.environ.get("FUNPAYHUB_APP_URL", "http://127.0.0.1:5000")
+        state_api = HubStateAPI(base_url=hub_url)
         plugin_manager = PluginManager(state_api=state_api, event_bus=event_bus)
         if verbose:
             print("[Bootstrap] PluginManager ready")
@@ -430,24 +432,24 @@ def _start_market_auto_update(seller_service, interval_sec=3 * 60 * 60, verbose=
     def _update():
         if verbose:
             print("[System] Автообновление рынка при запуске")
-        _do_market_update(seller_service, verbose=verbose)
+        _do_market_update(seller_service, hub_url=hub_url, verbose=verbose)
         while True:
             time.sleep(interval_sec)
             if verbose:
                 print("[System] Плановое обновление рынка (каждые 3ч)")
-            _do_market_update(seller_service, verbose=verbose)
+            _do_market_update(seller_service, hub_url=hub_url, verbose=verbose)
 
     t = threading.Thread(target=_update, name="MarketAutoUpdate", daemon=True)
     t.start()
     return t
 
 
-def _do_market_update(seller_service, verbose=True):
+def _do_market_update(seller_service, hub_url="http://127.0.0.1:5000", verbose=True):
     try:
-        _http_client.post("http://127.0.0.1:5000/api/market/heatmap", json={}, timeout=30)
-        _http_client.get("http://127.0.0.1:5000/api/market/niches", timeout=15)
-        _http_client.get("http://127.0.0.1:5000/api/market/competitors", timeout=15)
-        _http_client.get("http://127.0.0.1:5000/api/market/ratings", timeout=15)
+        _http_client.post(f"{hub_url}/api/market/heatmap", json={}, timeout=30)
+        _http_client.get(f"{hub_url}/api/market/niches", timeout=15)
+        _http_client.get(f"{hub_url}/api/market/competitors", timeout=15)
+        _http_client.get(f"{hub_url}/api/market/ratings", timeout=15)
         if verbose:
             print("[System] Рынок обновлён")
     except Exception as e:
@@ -497,32 +499,34 @@ def _do_auto_backup(verbose=True):
 # G2: Health check every 60 seconds
 # ---------------------------------------------------------------------
 
+def _notify_telegram(text):
+    """Отправить уведомление админу в Telegram (используется health-check)."""
+    try:
+        import os, json
+        cfg_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "configs",
+            "plugins",
+            "telegram_notifier_plugin.json",
+        )
+        with open(cfg_path, encoding="utf-8") as f:
+            tg_cfg = json.load(f)
+        token = tg_cfg.get("bot_token", "")
+        chat_id = tg_cfg.get("chat_id", "")
+        if token and chat_id:
+            _http_client.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+                timeout=10,
+            )
+    except Exception:
+        pass
+
+
 def _start_health_check(interval_sec=60, verbose=True, plugin_manager=None, event_bus=None):
     import threading, time, logging
 
     logger = logging.getLogger("FunPayHUB.Health")
-
-    def _notify_telegram(text):
-        try:
-            import os, json
-            cfg_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                "configs",
-                "plugins",
-                "telegram_notifier_plugin.json",
-            )
-            with open(cfg_path, encoding="utf-8") as f:
-                tg_cfg = json.load(f)
-            token = tg_cfg.get("bot_token", "")
-            chat_id = tg_cfg.get("chat_id", "")
-            if token and chat_id:
-                _http_client.post(
-                    f"https://api.telegram.org/bot{token}/sendMessage",
-                    json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
-                    timeout=10,
-                )
-        except Exception:
-            pass
 
     def _check(plugin_manager=None):
         while True:

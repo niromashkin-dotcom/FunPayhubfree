@@ -95,7 +95,8 @@ def _save_history(conversations: list):
 def _gather_context() -> dict:
     """Pull all relevant data from local APIs to feed AI."""
     ctx = {}
-    base = "http://127.0.0.1:5000"
+    from bot.config import get_hub_url
+    base = get_hub_url()
 
     def _fetch(path, timeout=3):
         try:

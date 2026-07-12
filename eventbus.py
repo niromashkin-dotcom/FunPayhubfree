@@ -26,6 +26,6 @@ class EventBus:
             handlers = self._listeners.get(event_type, []).copy()
         for handler in handlers:
             try:
-                handler(event)
+                handler(event_type, event)
             except Exception as e:
                 print(f"[EventBus] Handler error: {e}")

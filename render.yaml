@@ -32,7 +32,7 @@ services:
       - key: TELEGRAM_ADMIN_CHAT_ID
         sync: false
       - key: FUNPAYHUB_APP_URL
-        sync: false
+        value: "https://funpayhub.onrender.com"
       - key: FUNPAYHUB_API_TOKEN
         sync: false
       # --- AI: основной провайдер Mistral AI (приоритет) ---

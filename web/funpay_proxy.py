@@ -40,7 +40,8 @@ def _get_user_id_from_seller_service():
 
     # 2) Try /api/seller/overview via internal call
     try:
-        j = _http_client.get("http://127.0.0.1:5000/api/seller/overview", timeout=3)
+        from bot.config import get_hub_url
+        j = _http_client.get(f"{get_hub_url()}/api/seller/overview", timeout=3)
         uid = j.get("user_id") or j.get("id") or j.get("uid")
         if uid: return str(uid)
     except Exception:

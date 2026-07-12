@@ -50,12 +50,12 @@ def worker_main(module_name, event_queue, result_queue, plugin_cls=None):
     try:
         load_plugin(module_name, plugin_cls)
         while True:
-            cmd, data = event_queue.get()
+            cmd, event_name, data = event_queue.get()
             if cmd == "stop":
                 break
             elif cmd == "event":
                 try:
-                    result = _plugin.on_event(data)
+                    result = _plugin.on_event(event_name, data)
                     result_queue.put(result)
                 except Exception as e:
                     result_queue.put(e)

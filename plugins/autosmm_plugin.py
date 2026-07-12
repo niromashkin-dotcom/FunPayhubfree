@@ -148,6 +148,8 @@ class AutoSMMPlugin(PluginBase):
     def __init__(self, module_name, state_api, event_bus):
         super().__init__(module_name, state_api, event_bus)
         self.http_client = HTTPClient()
+        from bot.config import get_hub_url
+        self.hub_url = get_hub_url()
 
         self._stop = threading.Event()
         self._worker = None
@@ -848,7 +850,7 @@ class AutoSMMPlugin(PluginBase):
                 return
             try:
                 data = self.http_client.post(
-                    "http://127.0.0.1:5000/api/seller/reviews/reply",
+                    self.hub_url + "/api/seller/reviews/reply",
                     json={"order_id": order_id, "text": reply_text},
                     timeout=10
                 )
@@ -937,14 +939,14 @@ class AutoSMMPlugin(PluginBase):
             pass
         if str(chat_id) == "sandbox-test-chat":
             try:
-                self.http_client.post("http://127.0.0.1:5000/api/dev/sandbox/seller_send",
+                self.http_client.post(self.hub_url + "/api/dev/sandbox/seller_send",
                                       json={"text": text, "source": "autosmm"}, timeout=5)
                 self._log(f"[SANDBOX] -> {text[:60]}")
             except Exception as e:
                 self._log(f"[SANDBOX send err] {e}", level="warn")
             return
         try:
-            data = self.http_client.post("http://127.0.0.1:5000/api/seller/chats/{}/send".format(chat_id),
+            data = self.http_client.post(self.hub_url + "/api/seller/chats/{}/send".format(chat_id),
                                           json={"text": text, "dry_run": False}, timeout=10)
             if data.get("ok"):
                 self._log(f"📤 -> {chat_id}: {text[:60]}")
@@ -959,7 +961,7 @@ class AutoSMMPlugin(PluginBase):
             self._stats["refunded"] += 1
             return
         try:
-            self.http_client.post(f"http://127.0.0.1:5000/api/seller/orders/{fp_order_id}/refund",
+            self.http_client.post(self.hub_url + f"/api/seller/orders/{fp_order_id}/refund",
                                   headers={"Content-Type": "application/json"},
                                   json={},
                                   timeout=15)
@@ -1145,7 +1147,7 @@ class AutoSMMPlugin(PluginBase):
 
     def _fetch_my_lots(self):
         try:
-            data = self.http_client.get("http://127.0.0.1:5000/api/seller/lots", timeout=10)
+            data = self.http_client.get(self.hub_url + "/api/seller/lots", timeout=10)
             return data.get("lots", []) if isinstance(data, dict) else []
         except Exception as e:
             self._log(f"fetch my lots failed: {e}", level="warn")
@@ -1357,7 +1359,7 @@ class AutoSMMPlugin(PluginBase):
             price = niche.get("price", 40)
             variations = niche.get("variations", 15)
             try:
-                data = self.http_client.post("http://127.0.0.1:5000/api/dev/lots/generate", json={
+                data = self.http_client.post(self.hub_url + "/api/dev/lots/generate", json={
                     "service_id": service_id,
                     "quantity": quantity,
                     "price": price,

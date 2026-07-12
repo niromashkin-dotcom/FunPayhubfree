@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class PluginExecutor(ABC):
     @abstractmethod
-    def execute_event(self, plugin, event, **kwargs):
+    def execute_event(self, plugin, event_name, event, **kwargs):
         """Выполняет обработку события плагином."""
         pass
 

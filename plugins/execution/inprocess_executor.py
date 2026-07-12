@@ -3,10 +3,10 @@ import time
 from plugins.execution.base import PluginExecutor
 
 class InProcessExecutor(PluginExecutor):
-    def execute_event(self, plugin, event, **kwargs):
+    def execute_event(self, plugin, event_name, event, **kwargs):
         start = time.time()
         try:
-            plugin.on_event(event)
+            plugin.on_event(event_name, event)
         except Exception as e:
             # Метрики и логирование будут на уровне PluginManager
             raise e

@@ -314,7 +314,7 @@ class PluginManager:
                     executor = self._executor_registry.get_default()
                 start = time.time()
                 try:
-                    executor.execute_event(plugin, data)
+                    executor.execute_event(plugin, event_name, data)
                 except Exception as e:
                     print(f"[PluginManager] Error in plugin {module_name}: {e}")
                     self._transition(module_name, PluginState.ERROR, e)

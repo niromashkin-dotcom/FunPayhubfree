@@ -252,8 +252,9 @@ class AutoReplyEngine:
                 if not _myid:
                     try:
                         from runtime.http_client import HTTPClient
+                        from bot.config import get_hub_url
                         _req = HTTPClient()
-                        d = _req.get("http://127.0.0.1:5000/api/funpay/me", timeout=3)
+                        d = _req.get(f"{get_hub_url()}/api/funpay/me", timeout=3)
                         _myid = str((d or {}).get("data", {}).get("user_id") or "")
                     except Exception:
                         pass
@@ -271,8 +272,9 @@ class AutoReplyEngine:
         if str(chat_id) == "sandbox-test-chat":
             try:
                 from runtime.http_client import HTTPClient
+                from bot.config import get_hub_url
                 _b37_req = HTTPClient()
-                _b37_req.post("http://127.0.0.1:5000/api/dev/sandbox/seller_send",
+                _b37_req.post(f"{get_hub_url()}/api/dev/sandbox/seller_send",
                               json={"text": text, "source": "autoreply"}, timeout=5)
                 print(f"[AutoReply][SANDBOX] -> {text[:60]}")
             except Exception as _e_b37:

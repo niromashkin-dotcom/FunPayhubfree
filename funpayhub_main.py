@@ -105,7 +105,8 @@ app.observability = None
 # Initialize clean plugin system (no Cardinal, no dashboard)
 try:
     from hub_bootstrap import init_plugin_system
-    _rc, _rl, _nm, _eb = init_plugin_system(plugins_dir="plugins", verbose=True)
+    hub_url = os.environ.get("FUNPAYHUB_APP_URL", "http://127.0.0.1:5000")
+    _rc, _rl, _nm, _eb = init_plugin_system(plugins_dir="plugins", verbose=True, hub_url=hub_url)
     app.runtime_controller   = _rc
     app.runtime_log          = _rl
     app.notification_manager = _nm
