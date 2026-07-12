@@ -1,5 +1,5 @@
 services:
-  # Hub: один WSGI worker, так как импорт приложения запускает фоновые задачи.
+  # Hub web service
   - type: web
     name: funpayhub
     runtime: python
@@ -19,9 +19,9 @@ services:
       - key: TELEGRAM_NOTIFIER_CHAT_ID
         sync: false
 
-  # Единственный long-polling worker. Не создавайте второй service с тем же токеном.
+  # Telegram bot worker (aiogram 3.x)
   - type: worker
-    name: funpayhub-telegram
+    name: funpayhub-tg-bot
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: python run_bot.py
@@ -34,7 +34,12 @@ services:
       - key: FUNPAYHUB_APP_URL
         sync: false
       - key: FUNPAYHUB_API_TOKEN
-        fromService:
-          name: funpayhub
-          type: web
-          envVarKey: FUNPAYHUB_API_TOKEN
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_API_URL
+        value: "http://127.0.0.1:31415/v1"
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: RENDER_API_KEY
+        sync: false
