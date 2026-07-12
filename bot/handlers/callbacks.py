@@ -300,7 +300,7 @@ async def cb_lots(query: CallbackQuery) -> None:
 @router.callback_query(F.data == "create_lots")
 async def cb_create_lots(query: CallbackQuery) -> None:
     try:
-        data = await api.post("/api/lots/generate", {"plugin": "autosmm", "supplier": "", "dry_run": True})
+        data = await api.post("/api/lots/generate", {"plugin": "autosmm_plugin", "supplier": "", "dry_run": True})
         text = format_lots(data) if isinstance(data, dict) else format_error("/api/lots/generate", data)
         await _safe_edit(query, text, get_main_menu())
     except APIClientError as exc:
@@ -432,9 +432,9 @@ async def cb_plugins_panel(query: CallbackQuery) -> None:
         autodonate_enabled = False
         if isinstance(data, dict):
             for p in data.get("plugins", []):
-                if p.get("name") == "autosmm":
+                if p.get("name") == "autosmm_plugin":
                     autosmm_enabled = p.get("enabled", False)
-                if p.get("name") == "autodonate":
+                if p.get("name") == "autodonate_plugin":
                     autodonate_enabled = p.get("enabled", False)
         await _safe_edit(query, text, get_plugins_keyboard(autosmm_enabled, autodonate_enabled))
     except APIClientError as exc:
@@ -466,7 +466,8 @@ async def cb_plugin_detail(query: CallbackQuery) -> None:
 async def cb_plugin_actions(query: CallbackQuery) -> None:
     try:
         raw = query.data or ""
-        plugin = raw.split("_")[0]
+        plugin_alias = raw.split("_")[0]
+        plugin = "autosmm_plugin" if plugin_alias == "autosmm" else "autodonate_plugin" if plugin_alias == "autodonate" else plugin_alias
         if raw.endswith("_toggle"):
             try:
                 status_data = await api.get(f"/api/plugins/{plugin}")
@@ -480,17 +481,17 @@ async def cb_plugin_actions(query: CallbackQuery) -> None:
             action = "disable" if current else "enable"
             data = await api.post(f"/api/plugins/{plugin}/{action}")
             is_active = not current
-            text = f"✅ {'📈 АвтоСММ' if plugin == 'autosmm' else '💰 АвтоДонат'} {'запущен' if is_active else 'остановлен'}"
-            await _safe_edit(query, text, get_plugin_detail_keyboard(plugin, is_active))
+            text = f"✅ {'📈 АвтоСММ' if plugin_alias == 'autosmm' else '💰 АвтоДонат'} {'запущен' if is_active else 'остановлен'}"
+            await _safe_edit(query, text, get_plugin_detail_keyboard(plugin_alias, is_active))
         elif raw.endswith("_deactivate"):
             data = await api.post("/api/dev/lots/deactivate_all", {})
             text = format_remove_all_lots(data)
-            await _safe_edit(query, text, get_plugin_detail_keyboard(plugin, True))
+            await _safe_edit(query, text, get_plugin_detail_keyboard(plugin_alias, True))
         elif raw.endswith("_status"):
             data = await api.get(f"/api/plugins/{plugin}")
             text = format_plugin_detail(data, plugin) if isinstance(data, dict) else format_error(f"/api/plugins/{plugin}", data)
             kb = get_plugin_detail_keyboard(
-                plugin,
+                plugin_alias,
                 data.get("config", {}).get("enabled", False) if isinstance(data, dict) and isinstance(data.get("config"), dict) else False,
             )
             await _safe_edit(query, text, kb)
