@@ -14,6 +14,7 @@ load_dotenv()
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
+from aiohttp import web
 
 from bot.config import get_bot_config
 from bot.handlers.start import router as start_router
@@ -29,6 +30,31 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger("run_bot")
+
+
+async def _start_health_server() -> web.AppRunner | None:
+    """Минимальный HTTP-сервер на $PORT.
+
+    Render создал этот сервис как Web Service, поэтому он сканирует открытый порт
+    и убивает инстанс, если порт не открыт (что приводит к рестартам и 409 Conflict
+    у Telegram polling). Открываем порт, чтобы бот жил стабильно.
+    """
+    port = os.environ.get("PORT")
+    if not port:
+        return None
+
+    async def health(_request: web.Request) -> web.Response:
+        return web.json_response({"status": "ok", "service": "funpayhub-tg-bot"})
+
+    app = web.Application()
+    app.router.add_get("/", health)
+    app.router.add_get("/health", health)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", int(port))
+    await site.start()
+    logger.info("Health server listening on 0.0.0.0:%s", port)
+    return runner
 
 
 async def main():
@@ -72,6 +98,8 @@ async def main():
     )
     await ai_agent_service.start(bot)
 
+    health_runner = await _start_health_server()
+
     try:
         me = await bot.get_me()
         logger.info("Bot connected: @%s (id=%s)", me.username, me.id)
@@ -100,6 +128,8 @@ async def main():
         pass
     finally:
         await ai_agent_service.stop()
+        if health_runner is not None:
+            await health_runner.cleanup()
         await bot.session.close()
 
 
