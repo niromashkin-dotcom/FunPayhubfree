@@ -192,25 +192,18 @@ class AIAgentService:
                         "action": "manual",
                     }
 
-    def list_project_files(self, subdir: str = "", limit: int = 200) -> List[str]:
-        """Вернуть список файлов проекта (полный доступ к файловой системе проекта)."""
-        base = (self._project_root / subdir).resolve()
-        if not str(base).startswith(str(self._project_root)) or not base.exists():
-            return []
-        skip = {".git", "__pycache__", "venv", "venv2", "node_modules", ".kilo"}
-        files: List[str] = []
-        for path in base.rglob("*"):
-            if any(part in skip for part in path.parts):
-                continue
-            if path.is_file():
-                try:
-                    rel = path.relative_to(self._project_root).as_posix()
-                except ValueError:
-                    continue
-                files.append(rel)
-                if len(files) >= limit:
-                    break
-        return files
+    def _is_sensitive_path(self, path: Path) -> bool:
+        """Секретные файлы нельзя читать/отправлять во внешний LLM."""
+        name = path.name.lower()
+        if name == ".env" or name.startswith(".env."):
+            return True
+        if name.endswith((".key", ".pem")):
+            return True
+        sensitive_markers = ("credential", "secret", "password", "authorized_users",
+                             "assistant_keys", "golden_key")
+        if any(marker in name for marker in sensitive_markers):
+            return True
+        return False
 
     async def scan_project_files(self, patterns: Optional[List[str]] = None,
                                  max_files: int = 20) -> List[Dict[str, Any]]:
@@ -229,6 +222,8 @@ class AIAgentService:
                 if any(part in skip for part in path.parts):
                     continue
                 if not path.is_file():
+                    continue
+                if self._is_sensitive_path(path):
                     continue
                 try:
                     rel = path.relative_to(self._project_root).as_posix()
@@ -253,6 +248,8 @@ class AIAgentService:
         target = (self._project_root / file_path).resolve()
         if not target.exists() or not str(target).startswith(str(self._project_root)):
             return {"error": "Файл не найден или вне проекта"}
+        if self._is_sensitive_path(target):
+            return {"error": "Доступ к секретным файлам запрещён"}
 
         try:
             content = target.read_text(encoding="utf-8")

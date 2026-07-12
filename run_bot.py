@@ -17,6 +17,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
 
 from bot.config import get_bot_config
+from bot.middlewares import AuthMiddleware
 from bot.handlers.start import router as start_router
 from bot.handlers.callbacks import router as callback_router
 from bot.handlers.notifications import router as notifications_router
@@ -68,6 +69,7 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
+    dp.update.outer_middleware(AuthMiddleware())
     dp.include_router(start_router)
     dp.include_router(ai_router)
     dp.include_router(notifications_router)

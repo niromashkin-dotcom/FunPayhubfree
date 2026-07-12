@@ -36,7 +36,19 @@ def _is_authorized(user_id: int | str, chat_id: int | str | None = None) -> bool
     if admin and str(user_id) == admin:
         return True
     data = _load_authorized()
-    return str(user_id) in set(data.get("authorized_users", []))
+    authorized = {str(u) for u in data.get("authorized_users", [])}
+    return str(user_id) in authorized
+
+
+# Команды, доступные без авторизации (чтобы пользователь мог войти / получить помощь).
+_PUBLIC_COMMANDS = ("/start", "/menu", "/ping", "/auth")
+
+
+def _is_public_command(text: str | None) -> bool:
+    if not text:
+        return False
+    first = text.strip().split()[0].split("@")[0].lower()
+    return first in _PUBLIC_COMMANDS
 
 
 class AuthMiddleware(BaseMiddleware):
@@ -47,6 +59,8 @@ class AuthMiddleware(BaseMiddleware):
         data: Dict[str, Any],
     ) -> Any:
         if isinstance(event, Message):
+            if _is_public_command(event.text):
+                return await handler(event, data)
             user = event.from_user
             if user is None:
                 return await handler(event, data)
