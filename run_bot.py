@@ -75,6 +75,16 @@ async def main():
     dp.include_router(notifications_router)
     dp.include_router(callback_router)
 
+    # Запускаем health/HTTP-сервер МАКСИМАЛЬНО РАНО.
+    # Render (даже если сервис случайно web) сканирует порт и убивает инстанс,
+    # если порт не открыт — это приводит к рестартам и 409 Conflict у polling.
+    # Открываем порт до любых сетевых вызовов, чтобы Render зафиксировал успешный старт.
+    health_runner = None
+    try:
+        health_runner = await _start_health_server()
+    except Exception as exc:
+        logger.warning("Health server failed to start: %s", exc)
+
     ai_agent_service.configure(
         admin_chat_id=cfg.admin_chat_id,
         llm_api_keys=[
@@ -99,8 +109,6 @@ async def main():
         render_service_id=os.environ.get("RENDER_SERVICE_ID", ""),
     )
     await ai_agent_service.start(bot)
-
-    health_runner = await _start_health_server()
 
     try:
         me = await bot.get_me()
