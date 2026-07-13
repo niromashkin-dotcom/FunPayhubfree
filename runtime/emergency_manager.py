@@ -33,11 +33,12 @@ class EmergencyManager:
     EMERGENCY = "EMERGENCY"
 
     def __init__(self, event_bus, seller_service=None, plugin_manager=None,
-                 admin_chat_id: str = ""):
+                 admin_chat_id: str = "", message_manager=None):
         self._eb = event_bus
         self._svc = seller_service
         self._pm = plugin_manager
         self._admin_chat_id = admin_chat_id
+        self._msg_manager = message_manager
 
         self._state = self.NORMAL
         self._state_since = time.time()
@@ -203,19 +204,21 @@ class EmergencyManager:
             pass
 
     def _notify_admin(self, text: str):
-        """Отправить уведомление админу в Telegram."""
-        if not text or not self._admin_chat_id:
+        if not text:
             return
         try:
-            from runtime.http_client import HTTPClient
-            hc = HTTPClient()
-            hc.post(
-                f"https://api.telegram.org/bot"
-                f"{self._get_bot_token()}/sendMessage",
-                json={"chat_id": self._admin_chat_id, "text": text,
-                       "parse_mode": "HTML"},
-                timeout=10,
-            )
+            if self._msg_manager:
+                self._msg_manager.send_admin("notification", "emergency", {"text": text})
+            else:
+                from runtime.http_client import HTTPClient
+                hc = HTTPClient()
+                hc.post(
+                    f"https://api.telegram.org/bot"
+                    f"{self._get_bot_token()}/sendMessage",
+                    json={"chat_id": self._admin_chat_id, "text": text,
+                           "parse_mode": "HTML"},
+                    timeout=10,
+                )
         except Exception:
             pass
 

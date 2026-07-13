@@ -91,10 +91,11 @@ chat_lock_registry = ChatLockRegistry()
 # ---------------------------------------------------------------------
 
 class AutoReplyEngine:
-    def __init__(self, event_bus, seller_service, autosmm_plugin=None):
+    def __init__(self, event_bus, seller_service, autosmm_plugin=None, message_manager=None):
         self.event_bus = event_bus
         self.svc = seller_service
         self.autosmm_plugin = autosmm_plugin
+        self._msg_manager = message_manager
         self._lock = threading.RLock()
         self._recent = {}
         self._cooldown_seconds = 60
@@ -287,7 +288,10 @@ class AutoReplyEngine:
             print(f"[AutoReply] Chat {chat_id} locked by '{owner}' — skip")
             return False
         try:
-            res = self.svc.send_chat_message(chat_id, text, dry_run=False)
+            if self._msg_manager:
+                self._msg_manager.send("", chat_id, "autoreply", "response", {"text": text}, force=True)
+            else:
+                res = self.svc.send_chat_message(chat_id, text, dry_run=False)
             print(f"[AutoReply] Sent to chat {chat_id}: {text[:80]}")
             return True
         except Exception as e:

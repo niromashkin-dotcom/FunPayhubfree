@@ -202,8 +202,14 @@ class Ledger:
     def get_balance_snapshot(
         since: Optional[float] = None,
         until: Optional[float] = None,
+        real_only: bool = True,
     ) -> Dict[str, float]:
         """Get aggregated totals by transaction type.
+
+        Args:
+            since: Unix timestamp start
+            until: Unix timestamp end
+            real_only: if True, exclude transactions linked to test/simulation orders
 
         Returns:
             {"funpay_income": 1000.0, "provider_payment": -300.0, ...}
@@ -214,6 +220,9 @@ class Ledger:
                 Transaction.type,
                 func.sum(Transaction.amount),
             )
+            if real_only:
+                query = query.join(Order, Transaction.order_id == Order.id)
+                query = query.filter(Order.source == "real")
             if since:
                 query = query.filter(Transaction.created_at >= since)
             if until:
@@ -231,8 +240,14 @@ class Ledger:
     def get_daily_report(
         day_start: float,
         day_end: float,
+        real_only: bool = True,
     ) -> Dict[str, Any]:
         """Generate a daily report summary for the given period.
+
+        Args:
+            day_start: Unix timestamp start
+            day_end: Unix timestamp end
+            real_only: if True, exclude test/simulation orders
 
         Returns:
             {
@@ -243,16 +258,16 @@ class Ledger:
                 "by_type": { ... }
             }
         """
-        snapshot = Ledger.get_balance_snapshot(since=day_start, until=day_end)
+        snapshot = Ledger.get_balance_snapshot(since=day_start, until=day_end, real_only=real_only)
 
         session = get_session()
         try:
-            order_count = (
-                session.query(func.count(Order.id))
-                .filter(Order.started_at >= day_start,
-                        Order.started_at <= day_end)
-                .scalar()
-            )
+            query = session.query(func.count(Order.id)).filter(
+                Order.started_at >= day_start,
+                Order.started_at <= day_end)
+            if real_only:
+                query = query.filter(Order.source == "real")
+            order_count = query.scalar()
         finally:
             session.close()
 

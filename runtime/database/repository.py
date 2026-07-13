@@ -12,6 +12,7 @@ from runtime.database.base import get_session
 from runtime.database.models import (
     User, Order, Product, Lot, Provider,
     Transaction, Review, Log, ProviderBalance,
+    Notification, CacheEntry, PluginState, AnalyticsEvent,
     OrderStatus,
 )
 
@@ -72,6 +73,7 @@ class Repository:
         service_tag: Optional[str] = None,
         product_id: Optional[int] = None,
         lot_id: Optional[int] = None,
+        source: str = "real",
     ) -> Order:
         session = get_session()
         try:
@@ -85,6 +87,7 @@ class Repository:
                 lot_id=lot_id,
                 status="pending",
                 started_at=time.time(),
+                source=source,
             )
             session.add(order)
             session.commit()
@@ -168,14 +171,16 @@ class Repository:
             session.close()
 
     @staticmethod
-    def count_orders(since: float = 0) -> int:
+    def count_orders(since: float = 0, real_only: bool = True) -> int:
         session = get_session()
         try:
-            return (
+            query = (
                 session.query(func.count(Order.id))
                 .filter(Order.started_at >= since)
-                .scalar()
             )
+            if real_only:
+                query = query.filter(Order.source == "real")
+            return query.scalar() or 0
         finally:
             session.close()
 
@@ -341,33 +346,41 @@ class Repository:
 
     @staticmethod
     def get_dashboard_stats() -> Dict[str, Any]:
-        """Quick stats for the Telegram Control Panel."""
+        """Quick stats for the Telegram Control Panel. Only real orders."""
         session = get_session()
         try:
             now = time.time()
             today_start = now - (now % 86400)  # start of current UTC day
 
-            total_orders = session.query(func.count(Order.id)).scalar() or 0
+            total_orders = session.query(func.count(Order.id)).filter(
+                Order.source == "real"
+            ).scalar() or 0
             active_orders = (
                 session.query(func.count(Order.id))
-                .filter(Order.status.in_(["pending", "in_progress"]))
+                .filter(Order.status.in_(["pending", "in_progress"]),
+                        Order.source == "real")
                 .scalar() or 0
             )
             today_orders = (
                 session.query(func.count(Order.id))
-                .filter(Order.started_at >= today_start)
+                .filter(Order.started_at >= today_start,
+                        Order.source == "real")
                 .scalar() or 0
             )
 
             total_income = (
                 session.query(func.sum(Transaction.amount))
-                .filter(Transaction.type == "funpay_income")
+                .join(Order, Transaction.order_id == Order.id)
+                .filter(Transaction.type == "funpay_income",
+                        Order.source == "real")
                 .scalar() or 0.0
             )
 
             total_profit = (
                 session.query(func.sum(Transaction.amount))
-                .filter(Transaction.type == "profit")
+                .join(Order, Transaction.order_id == Order.id)
+                .filter(Transaction.type == "profit",
+                        Order.source == "real")
                 .scalar() or 0.0
             )
 
@@ -378,5 +391,153 @@ class Repository:
                 "total_income": float(total_income),
                 "total_profit": float(total_profit),
             }
+        finally:
+            session.close()
+
+    # ── Notifications ─────────────────────────────────────────────────
+
+    @staticmethod
+    def log_notification(
+        order_id: Optional[int] = None,
+        chat_id: str = "",
+        category: str = "",
+        key: str = "",
+        text: str = "",
+        context: Optional[dict] = None,
+        delivery_status: str = "sent",
+        error: Optional[str] = None,
+    ) -> Notification:
+        session = get_session()
+        try:
+            entry = Notification(
+                order_id=order_id,
+                chat_id=chat_id,
+                category=category,
+                key=key,
+                text=text,
+                context=context,
+                delivery_status=delivery_status,
+                error=error,
+            )
+            session.add(entry)
+            session.commit()
+            return entry
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    @staticmethod
+    def get_notifications(chat_id: str = "", limit: int = 100) -> List[Notification]:
+        session = get_session()
+        try:
+            q = session.query(Notification)
+            if chat_id:
+                q = q.filter(Notification.chat_id == chat_id)
+            return q.order_by(Notification.sent_at.desc()).limit(limit).all()
+        finally:
+            session.close()
+
+    # ── Cache ────────────────────────────────────────────────────────
+
+    @staticmethod
+    def get_cache(key: str) -> Optional[CacheEntry]:
+        session = get_session()
+        try:
+            return session.query(CacheEntry).filter(CacheEntry.key == key).first()
+        finally:
+            session.close()
+
+    @staticmethod
+    def set_cache(key: str, value: str, ttl: Optional[float] = None, category: str = "api") -> CacheEntry:
+        session = get_session()
+        try:
+            entry = session.query(CacheEntry).filter(CacheEntry.key == key).first()
+            if entry:
+                entry.value = value
+                entry.ttl = ttl
+                entry.category = category
+                entry.created_at = time.time()
+            else:
+                entry = CacheEntry(key=key, value=value, ttl=ttl, category=category)
+                session.add(entry)
+            session.commit()
+            return entry
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    @staticmethod
+    def cleanup_expired_cache() -> int:
+        session = get_session()
+        try:
+            now = time.time()
+            rows = session.query(CacheEntry).filter(CacheEntry.ttl < now).delete(synchronize_session=False)
+            session.commit()
+            return rows
+        except Exception:
+            session.rollback()
+            return 0
+        finally:
+            session.close()
+
+    # ── Plugin State ─────────────────────────────────────────────────
+
+    @staticmethod
+    def set_plugin_state(plugin_name: str, state: str, config: Optional[dict] = None, last_error: Optional[str] = None):
+        session = get_session()
+        try:
+            entry = session.query(PluginState).filter(PluginState.plugin_name == plugin_name).first()
+            if entry:
+                entry.state = state
+                if config is not None:
+                    entry.config = config
+                if last_error is not None:
+                    entry.last_error = last_error
+                entry.updated_at = time.time()
+            else:
+                entry = PluginState(plugin_name=plugin_name, state=state, config=config, last_error=last_error)
+                session.add(entry)
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    @staticmethod
+    def get_plugin_state(plugin_name: str) -> Optional[PluginState]:
+        session = get_session()
+        try:
+            return session.query(PluginState).filter(PluginState.plugin_name == plugin_name).first()
+        finally:
+            session.close()
+
+    # ── Analytics ────────────────────────────────────────────────────
+
+    @staticmethod
+    def record_analytics(event_type: str, order_id: Optional[str] = None, payload: Optional[dict] = None):
+        session = get_session()
+        try:
+            event = AnalyticsEvent(event_type=event_type, order_id=order_id, payload=payload)
+            session.add(event)
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    @staticmethod
+    def get_analytics(event_type: str = "", limit: int = 200) -> List[AnalyticsEvent]:
+        session = get_session()
+        try:
+            q = session.query(AnalyticsEvent)
+            if event_type:
+                q = q.filter(AnalyticsEvent.event_type == event_type)
+            return q.order_by(AnalyticsEvent.created_at.desc()).limit(limit).all()
         finally:
             session.close()

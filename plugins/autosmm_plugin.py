@@ -922,6 +922,12 @@ class AutoSMMPlugin(PluginBase):
         return None
 
     def _send_message(self, chat_id, text):
+        if getattr(self, "_msg_manager", None) is not None:
+            try:
+                self._msg_manager.send("", str(chat_id), "plugin", "autosmm_message", {"text": text}, force=True)
+                return
+            except Exception:
+                pass
         try:
             if text and ("{{my_id}}" in text or "{my_id}" in text):
                 _myid = ""

@@ -30,11 +30,12 @@ class AIEngineerAgent:
     """
 
     def __init__(self, log_path: str = "", admin_chat_id: str = "",
-                 llm_api_key: str = "", llm_api_url: str = ""):
+                 llm_api_key: str = "", llm_api_url: str = "", message_manager=None):
         self._log_path = Path(log_path) if log_path else Path("logs/app.log")
         self._admin_chat_id = admin_chat_id
         self._llm_api_key = llm_api_key or os.environ.get("GOOGLE_API_KEY", "")
         self._llm_api_url = llm_api_url or os.environ.get("LLM_API_URL", "")
+        self._msg_manager = message_manager
 
         self._last_position = 0
         self._worker = None
@@ -42,7 +43,7 @@ class AIEngineerAgent:
         self._pending_patches: List[Dict] = []
 
         # Пороги
-        self.SCAN_INTERVAL = 300  # каждые 5 мин
+        self.SCAN_INTERVAL = 60  # каждые 60 сек
         self.MAX_ERRORS_PER_SCAN = 5
 
     def start(self):
@@ -171,18 +172,21 @@ class AIEngineerAgent:
     # ── Telegram ─────────────────────────────────────────────────
 
     def _send_admin(self, text: str):
-        if not text or not self._admin_chat_id:
+        if not text:
             return
         try:
-            from runtime.http_client import HTTPClient
-            hc = HTTPClient()
-            token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-            if token:
-                hc.post(
-                    f"https://api.telegram.org/bot{token}/sendMessage",
-                    json={"chat_id": self._admin_chat_id, "text": text,
-                           "parse_mode": "HTML"},
-                    timeout=10,
-                )
+            if self._msg_manager:
+                self._msg_manager.send_admin("notification", "ai_agent", {"text": text})
+            else:
+                from runtime.http_client import HTTPClient
+                hc = HTTPClient()
+                token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+                if token and self._admin_chat_id:
+                    hc.post(
+                        f"https://api.telegram.org/bot{token}/sendMessage",
+                        json={"chat_id": self._admin_chat_id, "text": text,
+                               "parse_mode": "HTML"},
+                        timeout=10,
+                    )
         except Exception as e:
             logger.error(f"[AIAgent] Send failed: {e}")

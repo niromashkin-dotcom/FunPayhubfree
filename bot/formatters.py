@@ -215,6 +215,49 @@ def format_lots(data: dict) -> str:
     return "\n".join(lines)
 
 
+def format_lots_stats(data: dict) -> str:
+    if not isinstance(data, dict):
+        return "❌ Нет данных о лотах"
+    lots = data.get("lots", [])
+    if not lots:
+        return "📈 <b>Статистика лотов</b>\nЛоты не найдены"
+    total = len(lots)
+    active = sum(1 for l in lots if l.get("active", True))
+    inactive = total - active
+
+    # Группировка по маркеру поставщика в названии
+    _MARKERS = {
+        "[AS#": "AutoSMM (Twiboost)", "[GB#": "GorgonaBoosts",
+        "[HB#": "HoldBoost", "[KS#": "Kosell", "[ST#": "Telegram Stars",
+        "[SC#": "ShopClaude", "[LS#": "LookSMM", "[FK#": "FreeKassa",
+    }
+    by_supplier: dict = {}
+    for l in lots:
+        title = l.get("title", "")
+        sup = "Прочее"
+        for mk, name in _MARKERS.items():
+            if mk in title:
+                sup = name
+                break
+        by_supplier.setdefault(sup, {"total": 0, "active": 0})
+        by_supplier[sup]["total"] += 1
+        if l.get("active", True):
+            by_supplier[sup]["active"] += 1
+
+    lines = [
+        "📈 <b>Статистика лотов</b>",
+        "─" * 25,
+        f"📦 Всего: {total}",
+        f"🟢 Активных: {active}",
+        f"🔴 Снятых: {inactive}",
+        "",
+        "📌 <b>По поставщикам:</b>",
+    ]
+    for sup, info in sorted(by_supplier.items()):
+        lines.append(f"  • {sup}: {info['active']}/{info['total']} активно")
+    return "\n".join(lines)
+
+
 # =====================================================================
 # Симуляция
 # =====================================================================

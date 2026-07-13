@@ -66,6 +66,8 @@ def _currency_to_symbol(currency_obj) -> str:
     if name:
         return CURRENCY_SYMBOLS.get(name, name)
     return str(currency_obj)
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SellerService:
@@ -4598,9 +4600,13 @@ class SellerService:
 
 
     def create_lot(self, lot_data: dict) -> dict:
+        print(f"[SellerService] create_lot called: title={lot_data.get('title')!r}, "
+              f"price={lot_data.get('price')}, category_id={lot_data.get('category_id')}, "
+              f"has_description={'description' in lot_data}")
         with self._lock:
             acc = self._get_account()
             if acc is None:
+                print("[SellerService] create_lot: acc is None (нет авторизации)")
                 return {"ok": False, "error": self._last_error or "Нет авторизации"}
             try:
                 title = str(lot_data.get("title", ""))
@@ -4612,16 +4618,43 @@ class SellerService:
                 from FunPayAPI import types as _fp_types
                 fields = {
                     "fields[summary][ru]": title,
+                    "fields[summary][en]": title,
                     "fields[desc][ru]": descr,
+                    "fields[desc][en]": descr,
                     "price": str(price),
                     "amount": str(amount),
                     "active": "on",
                 }
-                lot_fields = _fp_types.LotFields(0, fields)
+                subcat = None
+                node_id = 0
+                try:
+                    subcat_id = int(lot_data.get("subcategory_id") or 0)
+                    if subcat_id:
+                        for cat in acc.get_sorted_categories().values():
+                            subcat = cat.get_subcategory(_fp_types.SubCategoryTypes.COMMON, subcat_id)
+                            if subcat:
+                                break
+                    if subcat is None and lot_data.get("category_id"):
+                        category = acc.get_category(int(lot_data["category_id"]))
+                        if category:
+                            subs = [s for s in category.get_subcategories() if getattr(s, "type", None) is _fp_types.SubCategoryTypes.COMMON]
+                            if subs:
+                                subcat = subs[0]
+                    if subcat is not None:
+                        node_id = subcat.id
+                        fields["node_id"] = str(node_id)
+                except Exception:
+                    pass
+                lot_fields = _fp_types.LotFields(0, fields, subcategory=subcat)
+                print(f"[SellerService] create_lot: calling acc.save_lot (title={title!r}, price={price})")
                 acc.save_lot(lot_fields)
+                print(f"[SellerService] create_lot: acc.save_lot OK (title={title!r})")
                 return {"ok": True}
             except Exception as e:
-                return {"ok": False, "error": _safe_error(e)}
+                import traceback
+                print("[SellerService] FULL TRACEBACK:")
+                traceback.print_exc()
+                return {"ok": False, "error": traceback.format_exc()}
 
 seller_service_singleton = SellerService()
 

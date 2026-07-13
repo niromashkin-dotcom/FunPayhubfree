@@ -198,9 +198,13 @@ class StarsPlugin(PluginBase):
         return None
 
     def _send_message(self, chat_id: str, text: str):
-        """Отправляет сообщение покупателю через внутренний API"""
+        if getattr(self, "_msg_manager", None) is not None:
+            try:
+                self._msg_manager.send("", str(chat_id), "plugin", "stars_message", {"text": text}, force=True)
+                return
+            except Exception:
+                pass
         try:
-            # Следуем образцу autodonate_plugin.py: отправляем на локальный эндпоинт
             self.http_client.post(
                 self.hub_url + f"/api/seller/chats/{chat_id}/send",
                 json={"text": text, "dry_run": False},

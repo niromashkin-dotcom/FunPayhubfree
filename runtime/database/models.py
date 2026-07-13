@@ -156,13 +156,14 @@ class Order(Base):
     price            = Column(Float, nullable=False)
     service_tag      = Column(String(32), nullable=True)
     status           = Column(String(32), default="pending")
-    supplier_order_id = Column(String(128), nullable=True)  # ID at supplier
+    supplier_order_id = Column(String(128), nullable=True)
     supplier_name    = Column(String(64), nullable=True)
-    link             = Column(String(1024), nullable=True)  # buyer's link
+    link             = Column(String(1024), nullable=True)
     pings_sent       = Column(Integer, default=0)
     started_at       = Column(Float, default=time.time)
     completed_at     = Column(Float, nullable=True)
     timeout_refunded = Column(Boolean, default=False)
+    source           = Column(String(32), default="real", nullable=False, index=True)
 
     buyer     = relationship("User", back_populates="orders")
     product   = relationship("Product", back_populates="orders")
@@ -253,3 +254,68 @@ class ProviderBalance(Base):
     checked_at  = Column(Float, default=time.time)
 
     provider = relationship("Provider", back_populates="balances")
+
+
+class Notification(Base):
+    """Outgoing notification log — tracks every message sent to buyer."""
+    __tablename__ = "notifications"
+
+    id           = Column(Integer, primary_key=True, autoincrement=True)
+    order_id     = Column(Integer, ForeignKey("orders.id"), nullable=True, index=True)
+    chat_id      = Column(String(64), nullable=False, index=True)
+    category     = Column(String(32), nullable=False)   # order, error, delivery, review, notification
+    key          = Column(String(64), nullable=False)   # template key
+    text         = Column(Text, nullable=False)
+    context      = Column(JSON, nullable=True)
+    sent_at      = Column(Float, default=time.time, nullable=False)
+    delivery_status = Column(String(16), default="sent")  # sent, failed, pending
+    error        = Column(Text, nullable=True)
+
+    order = relationship("Order")
+
+    __table_args__ = (
+        Index("ix_notif_order_sent", "order_id", "sent_at"),
+    )
+
+
+class CacheEntry(Base):
+    """Persistent cache for API responses, templates, etc."""
+    __tablename__ = "cache"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    key        = Column(String(256), unique=True, nullable=False, index=True)
+    value      = Column(Text, nullable=True)
+    ttl        = Column(Float, nullable=True)       # expiration timestamp
+    category    = Column(String(64), nullable=True)  # api, template, config
+    created_at = Column(Float, default=time.time)
+
+    __table_args__ = (
+        Index("ix_cache_ttl", "ttl"),
+    )
+
+
+class PluginState(Base):
+    """Persistent plugin state (overrides plugin_state.py FSM)."""
+    __tablename__ = "plugin_states"
+
+    id          = Column(Integer, primary_key=True, autoincrement=True)
+    plugin_name = Column(String(128), unique=True, nullable=False, index=True)
+    state       = Column(String(32), nullable=False)   # init, loaded, active, disabled, error, unloaded
+    config      = Column(JSON, nullable=True)
+    last_error  = Column(Text, nullable=True)
+    updated_at  = Column(Float, default=time.time, onupdate=time.time)
+
+
+class AnalyticsEvent(Base):
+    """Analytics event log for orders, messages, errors."""
+    __tablename__ = "analytics_events"
+
+    id          = Column(Integer, primary_key=True, autoincrement=True)
+    event_type  = Column(String(64), nullable=False, index=True)  # order_created, message_sent, error, refund
+    order_id    = Column(String(64), nullable=True, index=True)
+    payload     = Column(JSON, nullable=True)
+    created_at  = Column(Float, default=time.time, nullable=False)
+
+    __table_args__ = (
+        Index("ix_analytics_type_created", "event_type", "created_at"),
+    )

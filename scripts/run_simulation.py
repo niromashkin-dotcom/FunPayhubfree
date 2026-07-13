@@ -100,6 +100,7 @@ order = repo.create_order(
     buyer_name="TestBuyer",
     chat_id="sim_chat_001",
     service_tag="AS#4947",
+    source="simulation",
 )
 log(f"   Заказ создан: {order.funpay_order_id} (id={order.id}) ✅")
 

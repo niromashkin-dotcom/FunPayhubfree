@@ -25,6 +25,7 @@ from bot.handlers.ai_agent import router as ai_router
 from bot.keyboards.main import get_main_menu
 from bot.formatters import format_welcome
 from bot.services import ai_agent_service
+from bot.services.cache_service import bot_cache
 
 logging.basicConfig(
     level=logging.INFO,
@@ -109,6 +110,12 @@ async def main():
         render_service_id=os.environ.get("RENDER_SERVICE_ID", ""),
     )
     await ai_agent_service.start(bot)
+
+    try:
+        asyncio.create_task(bot_cache.refresh_loop())
+        logger.info("Bot cache background refresh started")
+    except Exception as exc:
+        logger.warning("Bot cache refresh start failed: %s", exc)
 
     try:
         me = await bot.get_me()

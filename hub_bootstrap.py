@@ -10,10 +10,11 @@ Provides:
 
 Usage in funpayhub_main.py:
     from hub_bootstrap import init_plugin_system
-    runtime_controller, runtime_log, notification_manager, event_bus = init_plugin_system()
+    runtime_controller, runtime_log, notification_manager, event_bus, message_manager = init_plugin_system()
     app.runtime_controller    = runtime_controller
     app.runtime_log           = runtime_log
     app.notification_manager  = notification_manager
+    app.message_manager       = message_manager
 """
 # Загрузка переменных окружения из .env
 from dotenv import load_dotenv
@@ -135,8 +136,8 @@ class HubStateAPI:
 
 
 
-# B18: 60s background worker
-def _start_background_worker(seller_service, event_bus, interval_sec=60, verbose=True):
+# B18: 3s background worker (collect new messages)
+def _start_background_worker(seller_service, event_bus, interval_sec=3, verbose=True):
     import threading, time, traceback
     
     def _worker_loop():
@@ -164,7 +165,7 @@ def _start_background_worker(seller_service, event_bus, interval_sec=60, verbose
 
 def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_url: str = None):
     """Initialize plugin system without Cardinal / second Flask.
-    Returns: (runtime_controller, runtime_log, notification_manager, event_bus)
+    Returns: (runtime_controller, runtime_log, notification_manager, event_bus, message_manager)
     Any of these may be None if init failed for that part."""
 
     runtime_controller   = None
@@ -211,6 +212,26 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
         except Exception as _e:
             print(f"[Bootstrap] event_bus inject failed: {_e}")
 
+    # 2. MessageManager (Customer Communication Engine)
+    _msg_manager = None
+    _svc_for_mm = None
+    try:
+        from runtime.seller_service import seller_service_singleton as _svc_for_mm
+    except Exception:
+        pass
+    try:
+        from runtime.messages.message_manager import MessageManager
+        _admin_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "")
+        _msg_manager = MessageManager(
+            sender=_svc_for_mm,
+            admin_chat_id=_admin_id,
+        )
+        if verbose:
+            print("[Bootstrap] MessageManager ready (CCE)")
+    except Exception as _e_mm:
+        print(f"[Bootstrap] MessageManager failed: {_e_mm}")
+        import traceback; traceback.print_exc()
+
     # 3. PluginManager
     plugin_manager = None
     try:
@@ -224,6 +245,17 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
     except Exception as e:
         print(f"[Bootstrap] PluginManager failed: {e}")
         import traceback; traceback.print_exc()
+
+    # 3.1 Inject MessageManager into all loaded plugins
+    if plugin_manager and _msg_manager:
+        try:
+            for _plugin_name, _plugin_obj in plugin_manager.plugins.items():
+                if hasattr(_plugin_obj, "set_message_manager"):
+                    _plugin_obj.set_message_manager(_msg_manager)
+            if verbose:
+                print("[Bootstrap] MessageManager injected into plugins")
+        except Exception as _e_inj:
+            print(f"[Bootstrap] MessageManager injection failed: {_e_inj}")
 
     # 4. Load plugins from plugins/
     if plugin_manager:
@@ -276,7 +308,7 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
             _autosmm_plugin = None
             if plugin_manager:
                 _autosmm_plugin = plugin_manager.plugins.get("autosmm_plugin")
-            _ar_mod.autoreply_engine_singleton = AutoReplyEngine(event_bus, _svc_for_ar, autosmm_plugin=_autosmm_plugin)
+            _ar_mod.autoreply_engine_singleton = AutoReplyEngine(event_bus, _svc_for_ar, autosmm_plugin=_autosmm_plugin, message_manager=_msg_manager)
             _ar_mod.autoreply_engine_singleton.subscribe()
             if verbose:
                 print("[Bootstrap] AutoReplyEngine ready")
@@ -289,7 +321,7 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
         from runtime.order_tracker import get_tracker
         from runtime.seller_service import seller_service_singleton as _svc_ot
         if event_bus and _svc_ot:
-            _tracker = get_tracker(event_bus=event_bus, seller_service=_svc_ot)
+            _tracker = get_tracker(event_bus=event_bus, seller_service=_svc_ot, message_manager=_msg_manager)
             if _tracker:
                 if verbose:
                     print("[Bootstrap] OrderPaymentTracker ready")
@@ -310,6 +342,13 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
                 telegram_bot_url=_tg_url,
                 admin_chat_id=_admin_id,
             )
+            if _msg_manager:
+                _ofm._msg_manager = _msg_manager
+                _ofm._scenario = __import__("runtime.messages.scenario", fromlist=["ScenarioEngine"]).ScenarioEngine(_msg_manager)
+                _ofm._error_msgs = __import__("runtime.messages.error_messages", fromlist=["ErrorMessages"]).ErrorMessages(_msg_manager)
+                _ofm._review_msgs = __import__("runtime.messages.review_messages", fromlist=["ReviewMessages"]).ReviewMessages(_msg_manager)
+                _ofm._notif_msgs = __import__("runtime.messages.notification_messages", fromlist=["NotificationMessages"]).NotificationMessages(_msg_manager)
+                _ofm._recovery_msgs = __import__("runtime.messages.recovery_messages", fromlist=["RecoveryMessages"]).RecoveryMessages(_msg_manager)
             _ofm.start()
             event_bus._order_flow_manager = _ofm
             if verbose:
@@ -328,6 +367,7 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
             seller_service=_svc_em,
             plugin_manager=plugin_manager,
             admin_chat_id=_admin_id,
+            message_manager=_msg_manager,
         )
         _em.start()
         event_bus._emergency_manager = _em
@@ -341,7 +381,7 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
     try:
         from runtime.report_engine import ReportEngine
         _admin_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "")
-        _re = ReportEngine(event_bus=event_bus, admin_chat_id=_admin_id)
+        _re = ReportEngine(event_bus=event_bus, admin_chat_id=_admin_id, message_manager=_msg_manager)
         _re.start()
         event_bus._report_engine = _re
         if verbose:
@@ -376,7 +416,7 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
         from runtime.ai_engineer_agent import AIEngineerAgent
         _admin_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "")
         _llm_key = os.environ.get("GOOGLE_API_KEY", "")
-        _ai = AIEngineerAgent(admin_chat_id=_admin_id, llm_api_key=_llm_key)
+        _ai = AIEngineerAgent(admin_chat_id=_admin_id, llm_api_key=_llm_key, message_manager=_msg_manager)
         _ai.start()
         event_bus._ai_agent = _ai
         if verbose:
@@ -385,12 +425,12 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
     except Exception as _e_ai:
         print(f"[Bootstrap] AIEngineerAgent failed: {_e_ai}")
 
-    # B18: start background worker (60s tick)
+    # B18: 3s background worker (collect new messages)
     try:
         from runtime.seller_service import seller_service_singleton as _svc_b18
-        _start_background_worker(_svc_b18, event_bus, interval_sec=60, verbose=verbose)
+        _start_background_worker(_svc_b18, event_bus, interval_sec=3, verbose=verbose)
         if verbose:
-            print("[Bootstrap] Background worker started (60s)")
+            print("[Bootstrap] Background worker started (3s messages)")
     except Exception as _ew_b18:
         print("[Bootstrap] Background worker failed: " + str(_ew_b18))
 
@@ -419,7 +459,7 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
     except Exception as _ew_ab:
         print("[Bootstrap] Auto backup failed: " + str(_ew_ab))
 
-    return runtime_controller, runtime_log, notification_manager, event_bus
+    return runtime_controller, runtime_log, notification_manager, event_bus, _msg_manager
 
 
 # ---------------------------------------------------------------------

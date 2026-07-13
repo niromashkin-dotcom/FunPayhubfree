@@ -3,6 +3,7 @@ Order Payment Tracker for FunPay Hub.
 
 Tracks pending orders, sends Telegram pings every 60 seconds,
 and handles refunds after timeout (25 minutes).
+Uses MessageManager for all buyer-facing messages.
 """
 import json
 import time
@@ -10,6 +11,10 @@ import threading
 from runtime.http_client import HTTPClient
 from pathlib import Path
 from typing import Optional, Dict, Any
+from runtime.messages.message_manager import MessageManager
+from runtime.messages.order_messages import OrderMessages
+from runtime.messages.error_messages import ErrorMessages
+from runtime.messages.notification_messages import NotificationMessages
 
 _http_client = HTTPClient(max_retries=3)
 
@@ -32,7 +37,7 @@ def _tg_config() -> Dict[str, str]:
 
 
 class OrderPaymentTracker:
-    def __init__(self, event_bus, seller_service, telegram_bot_url: str = "", admin_chat_id: str = ""):
+    def __init__(self, event_bus, seller_service, telegram_bot_url: str = "", admin_chat_id: str = "", message_manager: Optional[MessageManager] = None):
         self.event_bus = event_bus
         self.svc = seller_service
         self.tg_bot_url = telegram_bot_url
@@ -41,6 +46,16 @@ class OrderPaymentTracker:
         self._lock = threading.RLock()
         self._worker = None
         self._stop = threading.Event()
+        self._msg_manager = message_manager
+        self._order_msgs = OrderMessages(message_manager) if message_manager else None
+        self._error_msgs = ErrorMessages(message_manager) if message_manager else None
+        self._notif_msgs = NotificationMessages(message_manager) if message_manager else None
+
+    def set_message_manager(self, mm: MessageManager):
+        self._msg_manager = mm
+        self._order_msgs = OrderMessages(mm)
+        self._error_msgs = ErrorMessages(mm)
+        self._notif_msgs = NotificationMessages(mm)
 
     def start(self):
         if not self.event_bus:
@@ -122,14 +137,14 @@ class OrderPaymentTracker:
     def _send_timeout_warning(self, chat_id: str, order_id: str, lot_title: str):
         if not chat_id:
             return
-        tmpl = self._load_template("timeout_warning")
-        text = tmpl.format(buyer_name="Покупатель", order_id=order_id) if tmpl else None
-        if not text:
-            text = f"⏱ Уважаемый покупатель, платеж за заказ #{order_id} пока не поступил. Если возникли проблемы — напишите."
-        try:
-            self.svc.send_chat_message(chat_id, text, dry_run=False)
-        except Exception:
-            pass
+        text = f"⏱ Уважаемый покупатель, платеж за заказ #{order_id} пока не поступил. Если возникли проблемы — напишите."
+        if self._msg_manager:
+            self._msg_manager.send(order_id, chat_id, "order", "link_request", {"order_id": order_id})
+        else:
+            try:
+                self.svc.send_chat_message(chat_id, text, dry_run=False)
+            except Exception:
+                pass
 
     def _do_refund(self, order_id: str, data: Dict[str, Any]):
         chat_id = data.get("chat_id")
@@ -138,38 +153,24 @@ class OrderPaymentTracker:
             self.svc.refund_order(order_id, dry_run=False)
         except Exception as e:
             print(f"[OrderTracker] refund failed for {order_id}: {e}")
-        tmpl = self._load_template("refund_timeout")
         admin_text = (
             f"❌ Заказ #{order_id} — возврат оформлен.\n"
             f"Причина: баланс не пополнен за 25 мин\n\n"
             f"📦 Лот: \"{lot_title}\""
         )
         self._send_tg(admin_text)
-        buyer_tmpl = self._load_template("sorry_timeout")
-        buyer_text = buyer_tmpl.format(buyer_name="Покупатель") if buyer_tmpl else (
-            f"🙏 Простите за ожидание!\n\nК сожалению, платеж не поступил. Оформляю возврат — средства вернутся в течение 24 часов."
+        buyer_text = (
+            f"🙏 Простите за ожидание!\n\n"
+            f"К сожалению, платеж не поступил. Оформляю возврат — средства вернутся в течение 24 часов."
         )
         if chat_id:
-            try:
-                self.svc.send_chat_message(chat_id, buyer_text, dry_run=False)
-            except Exception:
-                pass
-
-    def _load_template(self, template_id: str) -> Optional[str]:
-        try:
-            from pathlib import Path as _P
-            root = _P(__file__).resolve().parent.parent
-            cfg_path = root / "configs" / "message_templates.json"
-            if not cfg_path.exists():
-                return None
-            data = json.loads(cfg_path.read_text(encoding="utf-8"))
-            templates = data.get("templates", [])
-            for t in templates:
-                if t.get("id") == template_id:
-                    return t.get("text", "")
-        except Exception:
-            pass
-        return None
+            if self._msg_manager:
+                self._msg_manager.send(order_id, chat_id, "order", "refund", {"order_id": order_id})
+            else:
+                try:
+                    self.svc.send_chat_message(chat_id, buyer_text, dry_run=False)
+                except Exception:
+                    pass
 
     def _send_tg(self, text: str):
         if not text or not self.admin_chat_id:
@@ -211,14 +212,16 @@ class OrderPaymentTracker:
                     "url": url or f"https://funpay.com/orders/{order_id}/",
                 }
             print(f"[OrderTracker] Tracking order {order_id}")
-            # Persist to database
             try:
                 from runtime.database.repository import Repository
+                import os
+                source = "simulation" if os.environ.get("FUNPAYHUB_SIMULATION") == "1" else "real"
                 Repository.create_order(
                     funpay_order_id=order_id,
                     price=price,
                     buyer_name=buyer,
                     chat_id=chat_id,
+                    source=source,
                 )
             except Exception as db_e:
                 print(f"[OrderTracker] DB persist error: {db_e}")
@@ -243,10 +246,10 @@ class OrderPaymentTracker:
 _tracker_singleton = None
 
 
-def get_tracker(event_bus=None, seller_service=None) -> Optional[OrderPaymentTracker]:
+def get_tracker(event_bus=None, seller_service=None, message_manager=None) -> Optional[OrderPaymentTracker]:
     global _tracker_singleton
     if _tracker_singleton is None and event_bus and seller_service:
-        _tracker_singleton = OrderPaymentTracker(event_bus, seller_service)
+        _tracker_singleton = OrderPaymentTracker(event_bus, seller_service, message_manager=message_manager)
         _tracker_singleton.start()
     return _tracker_singleton
 
@@ -277,15 +280,7 @@ class SupplierOrderRegistry:
         self._data: Dict[str, dict] = {}
         self._load()
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def is_registered(self, funpay_order_id: str, supplier: str) -> bool:
-        """
-        Return True if this funpay_order_id already has a supplier
-        order recorded for the given supplier.
-        """
         with self._lock:
             entry = self._data.get(str(funpay_order_id))
             if entry and entry.get("supplier") == supplier:
@@ -293,7 +288,6 @@ class SupplierOrderRegistry:
             return False
 
     def get_supplier_order_id(self, funpay_order_id: str) -> Optional[str]:
-        """Return the stored supplier_order_id, or None."""
         with self._lock:
             entry = self._data.get(str(funpay_order_id))
             if entry:
@@ -302,7 +296,6 @@ class SupplierOrderRegistry:
 
     def register(self, funpay_order_id: str, supplier: str,
                  supplier_order_id: str):
-        """Record that funpay_order_id was sent to *supplier* and got supplier_order_id."""
         with self._lock:
             self._data[str(funpay_order_id)] = {
                 "supplier": supplier,
@@ -310,27 +303,11 @@ class SupplierOrderRegistry:
                 "created_at": time.time(),
             }
         self._save()
-        # Also persist to database
-        try:
-            from runtime.database.repository import Repository
-            Repository.update_order_status(
-                funpay_order_id=funpay_order_id,
-                status="in_progress",
-                supplier_name=supplier,
-                supplier_order_id=str(supplier_order_id),
-            )
-        except Exception:
-            pass
 
     def remove(self, funpay_order_id: str):
-        """Remove an entry (e.g. after a refund / order closed)."""
         with self._lock:
             self._data.pop(str(funpay_order_id), None)
         self._save()
-
-    # ------------------------------------------------------------------
-    # Persistence
-    # ------------------------------------------------------------------
 
     def _load(self):
         try:
@@ -352,12 +329,10 @@ class SupplierOrderRegistry:
             pass
 
 
-# Module-level singleton (lazy-initialised)
 _supplier_order_registry: Optional[SupplierOrderRegistry] = None
 
 
 def get_supplier_order_registry() -> SupplierOrderRegistry:
-    """Return the shared SupplierOrderRegistry singleton."""
     global _supplier_order_registry
     if _supplier_order_registry is None:
         _supplier_order_registry = SupplierOrderRegistry()

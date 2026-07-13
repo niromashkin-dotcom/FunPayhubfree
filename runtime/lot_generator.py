@@ -8,6 +8,8 @@ import random
 import itertools
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import logging
+logger = logging.getLogger(__name__)
 
 
 class LotGenerator:
@@ -38,7 +40,8 @@ class LotGenerator:
                 try:
                     sales = session.query(Order).filter(
                         Order.service_tag == service_tag,
-                        Order.status.in_(["completed", "in_progress"])
+                        Order.status.in_(["completed", "in_progress"]),
+                        Order.source == "real",
                     ).count()
                 finally:
                     session.close()
@@ -117,6 +120,16 @@ class LotGenerator:
             return self._services_cache
         except Exception:
             return []
+
+    def _load_kosell_products(self) -> List[Dict[str, Any]]:
+        """Загрузить товары Kosell для генерации лотов.
+
+        Источник товаров Kosell не привязан к статическому кэшу (поставщик
+        Kosell отсутствует в SupplierRegistry). Возвращаем пустой список —
+        секция donate_kosell будет пустой, генерация остальных разделов
+        (AutoSMM, Discord-boost, Stars) не нарушается.
+        """
+        return []
 
     def _categorize_service(self, service: Dict[str, Any]) -> tuple[str, str]:
         name = (service.get("name") or "").lower()
@@ -469,6 +482,7 @@ class LotGenerator:
     def save_lots(self, lots: List[Dict[str, Any]], plugin: str, supplier: str = "") -> Dict[str, Any]:
         if not self._seller_service:
             return {"ok": False, "error": "seller_service not available"}
+        print(f"[LotGenerator] save_lots called: total_lots={len(lots)}, plugin={plugin!r}, supplier={supplier!r}")
         created = 0
         failed = 0
         for lot in lots:
@@ -489,6 +503,7 @@ class LotGenerator:
                 elif lot_type == "game_rental":
                     category_id = 18  # Аренда игр
 
+                print(f"[LotGenerator] Attempting to create lot: title={title!r}, price={price}, category_id={category_id}")
                 result = self._seller_service.create_lot({
                     "title": title,
                     "description": descr,
@@ -496,10 +511,11 @@ class LotGenerator:
                     "amount": lot.get("amount", 1),
                     "category_id": category_id,
                 })
+                print(f"[LotGenerator] Lot creation result: ok={result.get('ok')}, id={result.get('id')}, error={result.get('error')}")
                 if result.get("ok"):
                     created += 1
                 else:
                     failed += 1
-            except Exception:
-                failed += 1
+            except Exception as e:
+                print(f"[LotGenerator] Error creating lot: {e}")
         return {"ok": True, "created": created, "failed": failed, "total": len(lots)}

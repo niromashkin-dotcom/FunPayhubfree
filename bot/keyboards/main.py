@@ -19,7 +19,7 @@ def get_main_menu() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(text="⚠️ Состояние", callback_data="system_status"),
-            InlineKeyboardButton(text="📦 Лоты", callback_data="lots"),
+            InlineKeyboardButton(text="🛒 Лоты", callback_data="lots_menu"),
         ],
         [
             InlineKeyboardButton(text="🤖 AI агент", callback_data="ai_agent"),
@@ -32,6 +32,23 @@ def get_main_menu() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="🔔 Уведомления", callback_data="notifications"),
             InlineKeyboardButton(text="📦 Плагины", callback_data="plugins_panel"),
+        ],
+    ])
+
+
+def get_lots_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="➕ Создать все лоты", callback_data="lots_create_all"),
+            InlineKeyboardButton(text="🔄 Пересоздать лоты", callback_data="lots_recreate"),
+        ],
+        [
+            InlineKeyboardButton(text="❌ Снять все лоты", callback_data="lots_remove_all"),
+            InlineKeyboardButton(text="📋 Проверить лоты", callback_data="lots"),
+        ],
+        [
+            InlineKeyboardButton(text="📈 Статистика лотов", callback_data="lots_stats"),
+            InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_menu"),
         ],
     ])
 

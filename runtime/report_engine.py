@@ -19,11 +19,10 @@ MSK = timezone(timedelta(hours=3))
 
 
 class ReportEngine:
-    """Генерация и отправка отчётов."""
-
-    def __init__(self, event_bus=None, admin_chat_id: str = ""):
+    def __init__(self, event_bus=None, admin_chat_id: str = "", message_manager=None):
         self._eb = event_bus
         self._admin_chat_id = admin_chat_id
+        self._msg_manager = message_manager
         self._worker = None
         self._stop = threading.Event()
 
@@ -94,10 +93,10 @@ class ReportEngine:
     # ── Построение отчёта ──────────────────────────────────────────
 
     def _build_daily_report(self, since: float, until: float) -> str:
-        """Сформировать текст отчёта за период."""
+        """Сформировать текст отчёта за период с указанием источников."""
         try:
             from runtime.database.ledger import Ledger
-            report = Ledger.get_daily_report(since, until)
+            report = Ledger.get_daily_report(since, until, real_only=True)
         except Exception:
             return "📊 Отчёт временно недоступен (БД)"
 
@@ -111,13 +110,16 @@ class ReportEngine:
             f"📊 ОТЧЁТ ЗА ПЕРИОД",
             f"━━━━━━━━━━━━━━━━━",
             f"📦 Заказов: {orders}",
+            f"   Источник: orders.db WHERE source='real' AND started_at в периоде",
             f"💰 Доход: {income:.2f} ₽",
+            f"   Источник: transactions WHERE type='funpay_income' + JOIN orders(source='real')",
             f"💸 Расходы: {abs(expenses):.2f} ₽",
+            f"   Источник: transactions (provider_payment + commission + refund) + JOIN orders",
             f"📈 Прибыль: {profit:.2f} ₽",
+            f"   Источник: transactions(type='profit') + JOIN orders",
             f"━━━━━━━━━━━━━━━━━",
         ]
 
-        # Детализация по типам
         for tx_type, amount in sorted(by_type.items()):
             if amount != 0:
                 emoji = {"funpay_income": "🟢", "provider_payment": "🔴",
@@ -127,7 +129,7 @@ class ReportEngine:
         return "\n".join(lines)
 
     def _build_forecast(self) -> str:
-        """Прогноз + бизнес-метрики (Этап L)."""
+        """Прогноз + бизнес-метрики (Этап L). Только реальные заказы."""
         try:
             from runtime.database.repository import Repository
             from runtime.database.ledger import Ledger
@@ -139,24 +141,25 @@ class ReportEngine:
             week_ago = now - 7 * 86400
             month_ago = now - 30 * 86400
 
-            report = Ledger.get_daily_report(week_ago, now)
+            report = Ledger.get_daily_report(week_ago, now, real_only=True)
             weekly_profit = report.get("total_profit", 0)
             daily_avg = weekly_profit / 7 if weekly_profit else 0
 
-            # ── Данные из БД ──
             session = get_session()
             try:
-                # Заказы по дням недели
                 total_orders = session.query(func.count(Order.id)).filter(
-                    Order.started_at >= month_ago).scalar() or 0
+                    Order.started_at >= month_ago,
+                    Order.source == "real"
+                ).scalar() or 0
 
-                # Эффективность поставщиков
                 providers_data = []
                 providers = session.query(Provider).all()
                 for p in providers:
                     p_orders = session.query(func.count(Order.id)).filter(
                         Order.provider_id == p.id,
-                        Order.started_at >= week_ago).scalar() or 0
+                        Order.started_at >= week_ago,
+                        Order.source == "real"
+                    ).scalar() or 0
                     if p_orders > 0:
                         providers_data.append(f"  • {p.name}: {p_orders} заказов/нед")
             finally:
@@ -164,9 +167,11 @@ class ReportEngine:
 
             lines = [
                 f"  • Средняя прибыль/день: {daily_avg:.2f} ₽",
+                f"    Источник: transactions (profit) JOIN orders(source='real') за 7 дней",
                 f"  • Прогноз на неделю: {daily_avg * 7:.2f} ₽",
                 f"  • Прогноз на месяц: {daily_avg * 30:.2f} ₽",
                 f"  • Заказов за 30 дней: {total_orders}",
+                f"    Источник: orders WHERE source='real' AND started_at >= 30 дней назад",
             ]
             if providers_data:
                 lines.append("  ─── Поставщики ───")
@@ -206,24 +211,27 @@ class ReportEngine:
         return {"inline_keyboard": keyboard}
 
     def _send_admin(self, text: str, reply_markup=None):
-        if not text or not self._admin_chat_id:
+        if not text:
             return
         try:
-            from runtime.http_client import HTTPClient
-            import os, json
-            hc = HTTPClient()
-            token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-            if token:
-                payload = {
-                    "chat_id": self._admin_chat_id,
-                    "text": text,
-                    "parse_mode": "HTML",
-                    "reply_markup": reply_markup or json.dumps(self._get_main_menu_markup())
-                }
-                hc.post(
-                    f"https://api.telegram.org/bot{token}/sendMessage",
-                    json=payload,
-                    timeout=10,
-                )
+            if self._msg_manager:
+                self._msg_manager.send_admin("notification", "report", {"text": text})
+            elif self._admin_chat_id:
+                from runtime.http_client import HTTPClient
+                import os, json
+                hc = HTTPClient()
+                token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+                if token:
+                    payload = {
+                        "chat_id": self._admin_chat_id,
+                        "text": text,
+                        "parse_mode": "HTML",
+                        "reply_markup": reply_markup or json.dumps(self._get_main_menu_markup())
+                    }
+                    hc.post(
+                        f"https://api.telegram.org/bot{token}/sendMessage",
+                        json=payload,
+                        timeout=10,
+                    )
         except Exception as e:
             logger.error(f"[Reports] Send failed: {e}")

@@ -29,3 +29,9 @@ class EventBus:
                 handler(event_type, event)
             except Exception as e:
                 print(f"[EventBus] Handler error: {e}")
+
+    # Алиас: плагины и менеджеры (order_flow, emergency_manager) вызывают
+    # event_bus.publish(...). Без этого метода вызовы падали с AttributeError
+    # (ловилось и глоталось, но уведомления не доходили).
+    def publish(self, event_type: str, event: Any) -> None:
+        self.emit(event_type, event)

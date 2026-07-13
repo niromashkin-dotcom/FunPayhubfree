@@ -78,9 +78,48 @@ def init_db():
     from runtime.database.models import (
         User, Order, Product, Lot, Provider,
         Transaction, Review, Log, ProviderBalance,
+        Notification, CacheEntry, PluginState, AnalyticsEvent,
     )
     Base.metadata.create_all(engine)
+
+    _migrate_add_order_source(engine)
+
     return engine
+
+
+def _migrate_add_order_source(engine):
+    """Add source column to orders table if it doesn't exist (SQLite migration)."""
+    import sqlalchemy as sa
+    from sqlalchemy import inspect
+    try:
+        insp = inspect(engine)
+        if not insp.has_table("orders"):
+            return
+        cols = [c["name"] for c in insp.get_columns("orders")]
+        if "source" not in cols:
+            with engine.connect() as conn:
+                conn.execute(sa.text("ALTER TABLE orders ADD COLUMN source VARCHAR(32) DEFAULT 'real' NOT NULL"))
+                conn.commit()
+                _mark_existing_test_orders(conn)
+    except Exception:
+        pass
+
+
+def _mark_existing_test_orders(conn):
+    """Mark existing test/simulation orders by ID pattern."""
+    import sqlalchemy as sa
+    patterns = [
+        "sim_test_%", "sim_load_%", "sim_%",
+        "ORD%", "db_stress_%",
+    ]
+    for pattern in patterns:
+        try:
+            conn.execute(sa.text(
+                "UPDATE orders SET source='simulation' WHERE funpay_order_id LIKE :p AND source='real'"
+            ), {"p": pattern})
+            conn.commit()
+        except Exception:
+            pass
 
 
 def shutdown_db():

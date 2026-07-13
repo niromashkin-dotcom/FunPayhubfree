@@ -14,6 +14,7 @@ from aiogram.exceptions import TelegramBadRequest
 
 from bot.api_client import APIClient, APIClientError
 from bot.config import get_bot_config
+from bot.services.cache_service import bot_cache
 from bot.formatters import (
     format_balance,
     format_report,
@@ -31,6 +32,7 @@ from bot.formatters import (
     format_remove_all_lots,
     format_auto_create_toggle,
     format_market_status,
+    format_lots_stats,
     format_error,
 )
 from bot.keyboards.main import (
@@ -40,6 +42,7 @@ from bot.keyboards.main import (
     get_plugins_keyboard,
     get_plugin_detail_keyboard,
     get_confirm_keyboard,
+    get_lots_menu,
 )
 
 logger = logging.getLogger("bot.handlers.callbacks")
@@ -234,7 +237,7 @@ def _get_hub_pid() -> tuple[bool, int | None]:
 @router.callback_query(F.data == "report")
 async def cb_report(query: CallbackQuery) -> None:
     try:
-        data = await api.get("/api/seller/overview")
+        data = await bot_cache.get("overview")
         text = format_report(data) if isinstance(data, dict) else format_error("/api/seller/overview", data)
         await _safe_edit(query, text, get_main_menu())
     except APIClientError as exc:
@@ -247,7 +250,7 @@ async def cb_report(query: CallbackQuery) -> None:
 @router.callback_query(F.data == "balance")
 async def cb_balance(query: CallbackQuery) -> None:
     try:
-        data = await api.get("/api/seller/balance/full")
+        data = await bot_cache.get("balance")
         text = format_balance(data) if isinstance(data, dict) else format_error("/api/seller/balance/full", data)
         await _safe_edit(query, text, get_main_menu())
     except APIClientError as exc:
@@ -262,11 +265,11 @@ async def cb_system_status(query: CallbackQuery) -> None:
     try:
         health, overview = {}, {}
         try:
-            health = await api.get("/api/system/health")
+            health = await bot_cache.get("health")
         except Exception:
             pass
         try:
-            overview = await api.get("/api/seller/overview")
+            overview = await bot_cache.get("overview")
         except Exception:
             pass
         text = format_system_status(
@@ -287,7 +290,7 @@ async def cb_system_status(query: CallbackQuery) -> None:
 @router.callback_query(F.data == "lots")
 async def cb_lots(query: CallbackQuery) -> None:
     try:
-        data = await api.get("/api/seller/lots")
+        data = await bot_cache.get("lots")
         text = format_lots(data) if isinstance(data, dict) else format_error("/api/seller/lots", data)
         await _safe_edit(query, text, get_main_menu())
     except APIClientError as exc:
@@ -295,6 +298,74 @@ async def cb_lots(query: CallbackQuery) -> None:
     except Exception as exc:
         logger.error("lots error: %s", exc)
         await _safe_edit(query, format_error("lots", exc), get_main_menu())
+
+
+# =====================================================================
+# Lots submenu (🛒 Лоты) — Этап 2.1
+# =====================================================================
+
+
+@router.callback_query(F.data == "lots_menu")
+async def cb_lots_menu(query: CallbackQuery) -> None:
+    await _safe_edit(query, "🛒 <b>Управление лотами</b>\n─" * 18 + "\nВыберите действие:", get_lots_menu())
+
+
+@router.callback_query(F.data == "lots_create_all")
+async def cb_lots_create_all(query: CallbackQuery) -> None:
+    """Создать ВСЕ лоты (динамическое масштабирование 3→8→15). Реальный API."""
+    try:
+        data = await api.post("/api/lots/create_all", {"dry_run": False})
+        if isinstance(data, dict) and data.get("ok"):
+            by_section = data.get("by_section", {})
+            sec = ", ".join(f"{k}: {v}" for k, v in by_section.items()) or "—"
+            text = (
+                f"➕ <b>Лоты созданы</b>\n─" * 18 + f"\n"
+                f"📦 Сгенерировано: {data.get('generated', 0)}\n"
+                f"✅ Создано на FunPay: {data.get('created', 0)}\n"
+                f"📊 По разделам: {sec}"
+            )
+        else:
+            text = format_error("/api/lots/create_all", data)
+        await _safe_edit(query, text, get_lots_menu())
+    except APIClientError as exc:
+        await _safe_edit(query, format_error("/api/lots/create_all", exc), get_lots_menu())
+    except Exception as exc:
+        logger.error("lots_create_all error: %s", exc)
+        await _safe_edit(query, format_error("lots_create_all", exc), get_lots_menu())
+
+
+@router.callback_query(F.data == "lots_recreate")
+async def cb_lots_recreate(query: CallbackQuery) -> None:
+    """Пересоздать: снять все, затем создать заново. Реальный API."""
+    try:
+        deact = await api.post("/api/dev/lots/deactivate_all", {})
+        deactivated = deact.get("deactivated", 0) if isinstance(deact, dict) else 0
+        created_data = await api.post("/api/lots/create_all", {"dry_run": False})
+        created = created_data.get("created", 0) if isinstance(created_data, dict) else 0
+        text = (
+            f"🔄 <b>Лоты пересозданы</b>\n─" * 18 + f"\n"
+            f"🗑️ Снято: {deactivated}\n"
+            f"➕ Создано: {created}"
+        )
+        await _safe_edit(query, text, get_lots_menu())
+    except APIClientError as exc:
+        await _safe_edit(query, format_error("/api/lots/create_all", exc), get_lots_menu())
+    except Exception as exc:
+        logger.error("lots_recreate error: %s", exc)
+        await _safe_edit(query, format_error("lots_recreate", exc), get_lots_menu())
+
+
+@router.callback_query(F.data == "lots_stats")
+async def cb_lots_stats(query: CallbackQuery) -> None:
+    try:
+        data = await bot_cache.get("lots")
+        text = format_lots_stats(data) if isinstance(data, dict) else format_error("/api/seller/lots", data)
+        await _safe_edit(query, text, get_lots_menu())
+    except APIClientError as exc:
+        await _safe_edit(query, format_error("/api/seller/lots", exc), get_lots_menu())
+    except Exception as exc:
+        logger.error("lots_stats error: %s", exc)
+        await _safe_edit(query, format_error("lots_stats", exc), get_lots_menu())
 
 
 @router.callback_query(F.data == "create_lots")
@@ -426,7 +497,7 @@ async def cb_logs_refresh(query: CallbackQuery) -> None:
 @router.callback_query(F.data == "plugins_panel")
 async def cb_plugins_panel(query: CallbackQuery) -> None:
     try:
-        data = await api.get("/api/plugins")
+        data = await bot_cache.get("plugins")
         text = format_plugins_summary(data) if isinstance(data, dict) else format_error("/api/plugins", data)
         autosmm_enabled = False
         autodonate_enabled = False
@@ -447,7 +518,8 @@ async def cb_plugins_panel(query: CallbackQuery) -> None:
 @router.callback_query(F.data.in_({"autosmm", "autodonate"}))
 async def cb_plugin_detail(query: CallbackQuery) -> None:
     try:
-        plugin = "autosmm_plugin" if plugin == "autosmm" else "autodonate_plugin" if plugin == "autodonate" else plugin
+        raw = query.data or ""
+        plugin = "autosmm_plugin" if raw == "autosmm" else "autodonate_plugin" if raw == "autodonate" else raw
         data = await api.get(f"/api/plugins/{plugin}")
         text = format_plugin_detail(data, plugin) if isinstance(data, dict) else format_error(f"/api/plugins/{plugin}", data)
         kb = get_plugin_detail_keyboard(
@@ -488,8 +560,12 @@ async def cb_plugin_actions(query: CallbackQuery) -> None:
             text = format_remove_all_lots(data)
             await _safe_edit(query, text, get_plugin_detail_keyboard(plugin_alias, True))
         elif raw.endswith("_status"):
-            data = await api.get(f"/api/plugins/{plugin}")
-            text = format_plugin_detail(data, plugin) if isinstance(data, dict) else format_error(f"/api/plugins/{plugin}", data)
+            status_data = await api.get(f"/api/plugins/{plugin}")
+            data = status_data
+            if isinstance(data, dict):
+                text = format_plugin_detail(data, plugin_alias)
+            else:
+                text = format_error(f"/api/plugins/{plugin}", data)
             kb = get_plugin_detail_keyboard(
                 plugin_alias,
                 data.get("config", {}).get("enabled", False) if isinstance(data, dict) and isinstance(data.get("config"), dict) else False,

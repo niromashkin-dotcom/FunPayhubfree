@@ -23,6 +23,10 @@ class PluginBase:
         self.secrets = SecretsManager()
         self._enabled = False
         self._loaded = False
+        self._msg_manager: Any = None
+
+    def set_message_manager(self, mm: Any) -> None:
+        self._msg_manager = mm
 
     def get_info(self) -> dict:
         return self.__class__.PLUGIN_INFO.copy()

@@ -580,6 +580,12 @@ class AutoDonatePlugin(PluginBase):
     # ====================================================================
 
     def _send_message(self, chat_id, text):
+        if getattr(self, "_msg_manager", None) is not None:
+            try:
+                self._msg_manager.send("", str(chat_id), "plugin", "donate_message", {"text": text}, force=True)
+                return
+            except Exception:
+                pass
         try:
             if str(chat_id) == "sandbox-test-chat":
                 self.http_client.post(self.hub_url + "/api/dev/sandbox/seller_send",

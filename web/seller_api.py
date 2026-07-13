@@ -10,6 +10,11 @@ except Exception:
 seller_bp = Blueprint("seller", __name__)
 
 
+@seller_bp.route("/api/version")
+def version():
+    return jsonify({"version": "2.0.0"})
+
+
 @seller_bp.route("/api/seller/status")
 def status():
     return jsonify({"has_credentials": svc.has_credentials()})
@@ -61,6 +66,11 @@ def balance_history():
 @seller_bp.route("/api/seller/balance/history", methods=["DELETE"])
 def clear_balance_history():
     return jsonify(svc.clear_balance_history())
+
+
+@seller_bp.route("/api/seller/wallets")
+def wallets():
+    return jsonify(svc.get_wallets() if hasattr(svc, "get_wallets") else {"wallets": []})
 
 
 @seller_bp.route("/api/seller/test", methods=["POST"])
@@ -1673,6 +1683,88 @@ def deactivate_all_lots():
         return jsonify({"ok": True, "deactivated": deactivated})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+def _toggle_lots(svc, supplier, deactivate: bool):
+    lots_data = svc.get_my_lots(force_refresh=True)
+    markers = ["[AS#", "[GB#", "[HB#", "[KS#"]
+    toggled = 0
+    for lot in lots_data.get("lots", []):
+        title = lot.get("title", "")
+        if not any(m in title for m in markers):
+            continue
+        lot_id = lot.get("id")
+        if lot_id:
+            svc.toggle_lot_active(lot_id, not deactivate, dry_run=False)
+            toggled += 1
+    return toggled
+
+
+@seller_bp.route("/api/seller/lots/deactivate", methods=["POST"])
+def deactivate_lots_by_supplier():
+    body = request.get_json(silent=True) or {}
+    supplier = body.get("supplier")
+    all_lots = bool(body.get("all", False))
+    if not supplier and not all_lots:
+        return jsonify({"ok": False, "error": "нужен supplier или all=true"}), 400
+    count = _toggle_lots(svc, None if all_lots else supplier, True)
+    return jsonify({"ok": True, "deactivated": count})
+
+
+@seller_bp.route("/api/seller/lots/activate", methods=["POST"])
+def activate_lots_by_supplier():
+    body = request.get_json(silent=True) or {}
+    supplier = body.get("supplier")
+    all_lots = bool(body.get("all", False))
+    if not supplier and not all_lots:
+        return jsonify({"ok": False, "error": "нужен supplier или all=true"}), 400
+    count = _toggle_lots(svc, None if all_lots else supplier, False)
+    return jsonify({"ok": True, "activated": count})
+
+
+@seller_bp.route("/api/lots/create_all", methods=["POST"])
+def create_all_lots():
+    if LotGenerator is None:
+        return jsonify({"ok": False, "error": "LotGenerator not available"}), 500
+    body = request.get_json(silent=True) or {}
+    dry_run = bool(body.get("dry_run", False))
+    try:
+        generator = LotGenerator(seller_service=svc)
+        all_lots = generator.generate_all_lots()
+        by_section = {k: len(v) for k, v in all_lots.items()}
+        flat = []
+        for v in all_lots.values():
+            flat.extend(v)
+        created = 0
+        if not dry_run and flat:
+            print(f"[Endpoint] BEFORE save_lots: flat_count={len(flat)}, seller_service={svc!r}")
+            import runtime.lot_generator as _lg
+            print(f"[Endpoint] save_lots is {_lg.LotGenerator.save_lots}")
+            res = generator.save_lots(flat, plugin="autosmm")
+            print(f"[Endpoint] AFTER save_lots result={res}")
+            created = res.get("created", 0)
+        return jsonify({
+            "ok": True, "dry_run": dry_run, "generated": len(flat),
+            "created": created, "by_section": by_section,
+            "_marker": "ENDPOINT_ACTUAL_v2",
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@seller_bp.route("/api/seller/balance/suppliers")
+def suppliers_balance():
+    try:
+        from runtime.supplier_registry import SupplierRegistry
+        out = {}
+        for name in SupplierRegistry.get_all_suppliers():
+            out[name] = {
+                "balance": None,
+                "enabled": SupplierRegistry.is_enabled(name),
+            }
+        return jsonify(out)
+    except Exception:
+        return jsonify({})
 
 
 @seller_bp.route("/api/system/settings/auto_lots", methods=["POST"])

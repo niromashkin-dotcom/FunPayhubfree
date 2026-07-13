@@ -106,11 +106,12 @@ app.observability = None
 try:
     from hub_bootstrap import init_plugin_system
     hub_url = os.environ.get("FUNPAYHUB_APP_URL", "http://127.0.0.1:5000")
-    _rc, _rl, _nm, _eb = init_plugin_system(plugins_dir="plugins", verbose=True, hub_url=hub_url)
+    _rc, _rl, _nm, _eb, _mm = init_plugin_system(plugins_dir="plugins", verbose=True, hub_url=hub_url)
     app.runtime_controller   = _rc
     app.runtime_log          = _rl
     app.notification_manager = _nm
     app.event_bus            = _eb
+    app.message_manager      = _mm
     print("[funpayhub_main] Plugin system bootstrap complete")
 except Exception as _e:
     print(f"[funpayhub_main] Plugin bootstrap failed: {_e}")
