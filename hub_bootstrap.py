@@ -226,6 +226,11 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
             sender=_svc_for_mm,
             admin_chat_id=_admin_id,
         )
+        if _svc_for_mm is not None:
+            try:
+                _svc_for_mm.message_manager = _msg_manager
+            except Exception:
+                pass
         if verbose:
             print("[Bootstrap] MessageManager ready (CCE)")
     except Exception as _e_mm:

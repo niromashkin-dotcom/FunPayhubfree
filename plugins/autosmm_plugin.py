@@ -928,38 +928,7 @@ class AutoSMMPlugin(PluginBase):
                 return
             except Exception:
                 pass
-        try:
-            if text and ("{{my_id}}" in text or "{my_id}" in text):
-                _myid = ""
-                try:
-                    from runtime.seller_service import seller_service_singleton as _svc_b42
-                    if _svc_b42:
-                        _acc = _svc_b42._get_account()
-                        if _acc:
-                            _myid = str(_acc.id)
-                except Exception:
-                    pass
-                text = text.replace("{{my_id}}", _myid or "")
-                text = text.replace("{my_id}", _myid or "")
-        except Exception:
-            pass
-        if str(chat_id) == "sandbox-test-chat":
-            try:
-                self.http_client.post(self.hub_url + "/api/dev/sandbox/seller_send",
-                                      json={"text": text, "source": "autosmm"}, timeout=5)
-                self._log(f"[SANDBOX] -> {text[:60]}")
-            except Exception as e:
-                self._log(f"[SANDBOX send err] {e}", level="warn")
-            return
-        try:
-            data = self.http_client.post(self.hub_url + "/api/seller/chats/{}/send".format(chat_id),
-                                          json={"text": text, "dry_run": False}, timeout=10)
-            if data.get("ok"):
-                self._log(f"📤 -> {chat_id}: {text[:60]}")
-            else:
-                self._log(f"⚠️ Send failed -> {chat_id}: body={data}", level="warn")
-        except Exception as e:
-            self._log(f"Не удалось отправить сообщение в чат {chat_id}: {e}", level="warn")
+        self._log(f"[MessageManager] Not available, cannot send message to {chat_id}", level="warn")
 
     def _refund_order(self, fp_order_id, reason=""):
         if self.config.get("dry_run"):

@@ -350,6 +350,52 @@ NOTIFICATION_TEMPLATES: Dict[str, MessageTemplate] = {
 }
 
 
+PLUGIN_TEMPLATES: Dict[str, MessageTemplate] = {
+    "autosmm_message": MessageTemplate(
+        key="autosmm_message",
+        text="{text}",
+        requires_db=False,
+    ),
+    "donate_message": MessageTemplate(
+        key="donate_message",
+        text="{text}",
+        requires_db=False,
+    ),
+    "stars_message": MessageTemplate(
+        key="stars_message",
+        text="{text}",
+        requires_db=False,
+    ),
+    "autoreply_message": MessageTemplate(
+        key="autoreply_message",
+        text="{text}",
+        requires_db=False,
+    ),
+    "autodelivery_message": MessageTemplate(
+        key="autodelivery_message",
+        text="{text}",
+        requires_db=False,
+    ),
+}
+
+AUTOREPLY_TEMPLATES: Dict[str, MessageTemplate] = {
+    "response": MessageTemplate(
+        key="response",
+        text="{text}",
+        requires_db=False,
+    ),
+}
+
+
+AUTODELIVERY_TEMPLATES: Dict[str, MessageTemplate] = {
+    "delivery_message": MessageTemplate(
+        key="delivery_message",
+        text="{text}",
+        requires_db=False,
+    ),
+}
+
+
 def get_template(category: str, key: str) -> Optional[MessageTemplate]:
     category_map = {
         "order": ORDER_TEMPLATES,
@@ -358,6 +404,9 @@ def get_template(category: str, key: str) -> Optional[MessageTemplate]:
         "review": REVIEW_TEMPLATES,
         "recovery": RECOVERY_TEMPLATES,
         "notification": NOTIFICATION_TEMPLATES,
+        "plugin": PLUGIN_TEMPLATES,
+        "autoreply": AUTOREPLY_TEMPLATES,
+        "autodelivery": AUTODELIVERY_TEMPLATES,
     }
     container = category_map.get(category)
     if not container:

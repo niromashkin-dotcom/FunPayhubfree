@@ -204,14 +204,7 @@ class StarsPlugin(PluginBase):
                 return
             except Exception:
                 pass
-        try:
-            self.http_client.post(
-                self.hub_url + f"/api/seller/chats/{chat_id}/send",
-                json={"text": text, "dry_run": False},
-                timeout=10,
-            )
-        except Exception as e:
-            self._log(f"Ошибка отправки сообщения: {e}", level="warn")
+        self._log(f"[MessageManager] Not available, cannot send message to {chat_id}", level="warn")
 
     def _register_order_in_tracker(self, order_id: str, fragment_id: str, stars: int):
         """

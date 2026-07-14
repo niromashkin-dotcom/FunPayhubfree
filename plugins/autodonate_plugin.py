@@ -586,15 +586,7 @@ class AutoDonatePlugin(PluginBase):
                 return
             except Exception:
                 pass
-        try:
-            if str(chat_id) == "sandbox-test-chat":
-                self.http_client.post(self.hub_url + "/api/dev/sandbox/seller_send",
-                              json={"text": text, "source": "donate"}, timeout=5)
-                return
-            self.http_client.post(self.hub_url + "/api/seller/chats/{}/send".format(chat_id),
-                              json={"text": text, "dry_run": False}, timeout=10)
-        except Exception as e:
-            self._log(f"send_message err: {e}", level="warn")
+        self._log(f"[MessageManager] Not available, cannot send message to {chat_id}", level="warn")
 
     def _log(self, message, level="info"):
         print(f"[AutoDonatePlugin] {message}")
