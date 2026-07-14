@@ -1,0 +1,71 @@
+[
+  {
+    "service": "OrderService",
+    "responsibility": [
+      "order lifecycle",
+      "delivery trigger",
+      "status changes"
+    ],
+    "events_consumed": [
+      "order_paid"
+    ],
+    "database_tables": [
+      "orders",
+      "transactions"
+    ],
+    "forbidden": [
+      "direct message sending"
+    ]
+  },
+  {
+    "service": "DeliveryService",
+    "responsibility": [
+      "product delivery",
+      "supplier API interaction",
+      "messaging via ChatService"
+    ],
+    "events_consumed": [
+      "order_paid"
+    ],
+    "database_tables": [
+      "orders"
+    ],
+    "forbidden": [
+      "direct message sending (must use ChatService)",
+      "direct database changes outside of status"
+    ]
+  },
+  {
+    "service": "FinanceService",
+    "responsibility": [
+      "ledger management",
+      "transaction history",
+      "profit calculation"
+    ],
+    "events_consumed": [
+      "order_paid",
+      "order_completed",
+      "order_refunded"
+    ],
+    "database_tables": [
+      "transactions"
+    ],
+    "forbidden": [
+      "direct message sending",
+      "order status changes"
+    ]
+  },
+  {
+    "service": "ChatService",
+    "responsibility": [
+      "proxy to Customer Communication Engine (CCE)",
+      "centralized message logging"
+    ],
+    "events_consumed": [],
+    "database_tables": [],
+    "forbidden": [
+      "business logic",
+      "bypassing MessageManager"
+    ]
+  }
+]

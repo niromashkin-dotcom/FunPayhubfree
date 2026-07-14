@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FunPay Hub - Architecture Control Center</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #38bdf8; letter-spacing: 2px; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 40px; margin-top: 50px; }
+        .tier { display: flex; gap: 20px; justify-content: center; }
+        .node { background: #1e293b; border: 2px solid #3b82f6; padding: 20px 40px; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-weight: bold; text-align: center; min-width: 150px; }
+        .node:hover { background: #3b82f6; color: white; transform: scale(1.05); box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #475569; z-index: 100; max-width: 500px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .modal.active { display: block; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 50; backdrop-filter: blur(4px); }
+        .overlay.active { display: block; }
+        .modal h2 { margin-top: 0; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        .line { width: 2px; height: 40px; background: #475569; position: relative; }
+        .line::after { content: '▼'; position: absolute; bottom: -10px; left: -4px; color: #475569; font-size: 10px; }
+        .section-title { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; margin-top: 15px; margin-bottom: 5px; font-weight: 600; }
+        ul { margin: 0; padding-left: 20px; color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; }
+        .close-btn { background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; float: right; font-weight: bold; transition: background 0.2s; }
+        .close-btn:hover { background: #dc2626; }
+    </style>
+</head>
+<body>
+
+    <h1>FUNPAY HUB CORE</h1>
+
+    <div class="container">
+        <!-- EventBus -->
+        <div class="node" onclick="openModal('EventBus')">EventBus</div>
+        
+        <div class="line"></div>
+        
+        <!-- Micro Services -->
+        <div class="tier">
+            <div class="node" onclick="openModal('OrderService')">Orders</div>
+            <div class="node" onclick="openModal('ChatService')">CCE</div>
+            <div class="node" onclick="openModal('FinanceService')">Ledger</div>
+            <div class="node" onclick="openModal('DeliveryService')">Delivery</div>
+        </div>
+
+        <div class="line"></div>
+        
+        <!-- Plugins -->
+        <div class="node" onclick="openModal('Plugins')">Plugins</div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="closeModal()"></div>
+
+    <div class="modal" id="modal">
+        <button class="close-btn" onclick="closeModal()">X</button>
+        <h2 id="m-title">Service Name</h2>
+        
+        <div class="section-title">Files</div>
+        <ul id="m-files"></ul>
+
+        <div class="section-title">Events Consumed</div>
+        <ul id="m-events"></ul>
+
+        <div class="section-title">Database Writes</div>
+        <ul id="m-writes"></ul>
+
+        <div class="section-title">Forbidden Actions</div>
+        <ul id="m-forbidden" style="color: #fca5a5;"></ul>
+    </div>
+
+    <script>
+        const data = {
+            'OrderService': {
+                files: ['runtime/services/order_service.py'],
+                events: ['order_paid'],
+                writes: ['orders', 'transactions'],
+                forbidden: ['direct message sending']
+            },
+            'ChatService': {
+                files: ['runtime/services/chat_service.py', 'runtime/messages/message_manager.py'],
+                events: ['None (Receives direct method calls)'],
+                writes: ['None'],
+                forbidden: ['business logic', 'bypassing MessageManager']
+            },
+            'FinanceService': {
+                files: ['runtime/services/finance_service.py'],
+                events: ['order_paid', 'order_completed', 'order_refunded'],
+                writes: ['transactions'],
+                forbidden: ['direct message sending', 'order status changes']
+            },
+            'DeliveryService': {
+                files: ['runtime/services/delivery_service.py'],
+                events: ['order_paid'],
+                writes: ['orders (status update)'],
+                forbidden: ['direct message sending (must use ChatService)']
+            },
+            'EventBus': {
+                files: ['eventbus.py', 'runtime/database/repositories.py (EventJournal)'],
+                events: ['All Events (Routing)'],
+                writes: ['event_journal'],
+                forbidden: ['modifying event payload', 'swallowing exceptions silently']
+            },
+            'Plugins': {
+                files: ['plugins/*'],
+                events: ['Various based on plugin'],
+                writes: ['None directly (Uses Facades/Services)'],
+                forbidden: ['direct DB access', 'bypassing EventBus']
+            }
+        };
+
+        function openModal(service) {
+            document.getElementById('m-title').innerText = service;
+            const d = data[service];
+            
+            document.getElementById('m-files').innerHTML = d.files.map(f => `<li>${f}</li>`).join('');
+            document.getElementById('m-events').innerHTML = d.events.map(e => `<li>${e}</li>`).join('');
+            document.getElementById('m-writes').innerHTML = d.writes.map(w => `<li>${w}</li>`).join('');
+            document.getElementById('m-forbidden').innerHTML = d.forbidden.map(f => `<li>${f}</li>`).join('');
+
+            document.getElementById('modal').classList.add('active');
+            document.getElementById('overlay').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            document.getElementById('overlay').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

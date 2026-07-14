@@ -1,0 +1,26 @@
+[
+  {
+    "event": "order_paid",
+    "payload": {"order_id": "string", "amount": "float"},
+    "producer": "FunPayAPI (WebSockets / Polling)",
+    "consumers": ["OrderService", "FinanceService", "DeliveryService"],
+    "is_critical": true,
+    "recovery": "Retried via EventJournal if server crashes"
+  },
+  {
+    "event": "order_completed",
+    "payload": {"order_id": "string"},
+    "producer": "OrderService",
+    "consumers": ["FinanceService"],
+    "is_critical": false,
+    "recovery": "Ignored on crash, state derived from DB"
+  },
+  {
+    "event": "delivery_failed",
+    "payload": {"order_id": "string", "reason": "string"},
+    "producer": "DeliveryService",
+    "consumers": ["ChatService (Admin Alerts)", "OrderService"],
+    "is_critical": true,
+    "recovery": "Retried via EventJournal"
+  }
+]

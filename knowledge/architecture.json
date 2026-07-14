@@ -1,0 +1,32 @@
+{
+  "system": "FunPayHub Modular Monolith",
+  "pattern": "Gateway Facade with Micro-Services",
+  "layers": [
+    {
+      "name": "External",
+      "components": ["FunPayAPI", "Supplier APIs"]
+    },
+    {
+      "name": "Legacy Facade",
+      "components": ["SellerService (runtime/seller_service.py)"]
+    },
+    {
+      "name": "Micro Services",
+      "components": ["OrderService", "ChatService", "DeliveryService", "FinanceService"]
+    },
+    {
+      "name": "Event Bus",
+      "components": ["EventBus", "EventJournal (SQLite)"]
+    },
+    {
+      "name": "Database",
+      "components": ["SQLAlchemy", "SQLite WAL mode", "Repositories"]
+    }
+  ],
+  "rules": [
+    "No business logic in Facade.",
+    "Services communicate via EventBus or direct method calls.",
+    "Database access strictly through Repositories.",
+    "All messages must go through CCE (MessageManager) via ChatService."
+  ]
+}
