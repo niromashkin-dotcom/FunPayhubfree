@@ -1000,6 +1000,10 @@ if _svc_for_mm is not None:
 ### Коммиты
 - `248f80d` - feat(CCE): complete Customer Communication Engine migration
 - `0266a23` - fix(seller_service): restore indentation after CCE migration
+- `0acc667` - feat(CCE): harden MessageManager requirement in seller_service and autoreply_engine
+
+### Hardening (2026-07-14)
+Убран даже потенциальный fallback `acc.send_message(...)` в `seller_service` и `autoreply_engine`. Теперь при отсутствии `MessageManager` выбрасывается `RuntimeError`, чтобы предотвратить случайный обход CCE новыми разработчиками.
 
 ---
 

@@ -328,6 +328,7 @@ $ python -m pytest tests/ -x -q
 ### Commits
 - `248f80d` - feat(CCE): complete Customer Communication Engine migration
 - `0266a23` - fix(seller_service): restore indentation after CCE migration
+- `0acc667` - feat(CCE): harden MessageManager requirement in seller_service and autoreply_engine
 
 ---
 
