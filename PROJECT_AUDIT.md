@@ -932,4 +932,75 @@ ok
 
 ---
 
+## 11. Customer Communication Engine Migration (2026-07-14)
+
+### Проблема
+MessageManager существовал, но плагины и `seller_service` всё ещё использовали прямые HTTP fallback'и:
+- `autosmm_plugin.py`: fallback на `/api/seller/chats/{}/send`
+- `autodonate_plugin.py`: fallback на `/api/seller/chats/{}/send`
+- `stars_plugin.py`: fallback на `/api/seller/chats/{}/send`
+- `seller_service.py`: `acc.send_message()` на строках 836, 3332, 3590
+
+### Решение
+
+#### 11.1 Шаблоны для плагинов
+**Файл:** `runtime/messages/templates.py`
+- Добавлены `PLUGIN_TEMPLATES` с passthrough-шаблонами `{text}`
+- Добавлены `AUTOREPLY_TEMPLATES` и `AUTODELIVERY_TEMPLATES`
+
+#### 11.2 Убраны HTTP fallback'и из плагинов
+**Файлы:** `plugins/autosmm_plugin.py`, `plugins/autodonate_plugin.py`, `plugins/stars_plugin.py`
+```python
+# Было: если MessageManager недоступен — прямой HTTP POST
+# Стало: только warning в лог
+if getattr(self, "_msg_manager", None) is not None:
+    self._msg_manager.send(...)
+    return
+self._log("[MessageManager] Not available, cannot send message", level="warn")
+```
+
+#### 11.3 seller_service переведён на MessageManager
+**Файл:** `runtime/seller_service.py`
+```python
+# autoreply test:
+if getattr(self, "message_manager", None) is not None:
+    self.message_manager.send("", chat_id, "autoreply", "response", {"text": text}, force=True)
+else:
+    acc.send_message(chat_id, text=text)  # fallback только если MessageManager не настроен
+
+# autodelivery:
+if getattr(self, "message_manager", None) is not None:
+    self.message_manager.send("", chat_id, "autodelivery", "delivery_message", {"text": content_text}, force=True)
+else:
+    acc.send_message(chat_id, text=content_text)  # fallback
+```
+
+#### 11.4 Инъекция MessageManager в seller_service
+**Файл:** `hub_bootstrap.py`
+```python
+if _svc_for_mm is not None:
+    _svc_for_mm.message_manager = _msg_manager
+```
+
+#### 11.5 Исправлена ошибка отступов
+**Файл:** `runtime/seller_service.py` строка 3607
+- После миграции CCE остался orphaned `except Exception as e:`
+- Обёрнуто в `try/except` для сохранения обработки ошибок
+
+### Результат
+- Все плагины используют MessageManager
+- Прямые HTTP fallback'и убраны
+- CCE стал единой точкой отправки сообщений
+- `acc.send_message()` остаётся только как низкоуровневый транспорт для MessageManager
+
+### Проверки
+- `python -m compileall runtime bot plugins web` — OK
+- `python -m pytest tests/` — 9/9 PASS
+
+### Коммиты
+- `248f80d` - feat(CCE): complete Customer Communication Engine migration
+- `0266a23` - fix(seller_service): restore indentation after CCE migration
+
+---
+
 ## 🎯 ИТОГОВЫЙ СТАТУС: **ВЫПОЛНЕНО НА 100%**

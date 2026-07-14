@@ -235,6 +235,102 @@ b533697 fix(reports): exclude simulation/test data from reports
 
 ---
 
+## 10. Customer Communication Engine Migration (2026-07-14)
+
+### Problem
+Despite MessageManager existing, plugins and seller_service still used direct HTTP fallbacks:
+- `autosmm_plugin.py`: fallback to `/api/seller/chats/{}/send`
+- `autodonate_plugin.py`: fallback to `/api/seller/chats/{}/send`
+- `stars_plugin.py`: fallback to `/api/seller/chats/{}/send`
+- `seller_service.py`: `acc.send_message()` at lines 836, 3332, 3590
+
+This meant CCE was not the central messaging hub.
+
+### Solution
+
+#### 10.1 Added plugin templates
+**File:** `runtime/messages/templates.py`
+```python
+PLUGIN_TEMPLATES: Dict[str, MessageTemplate] = {
+    "autosmm_message": MessageTemplate(key="autosmm_message", text="{text}", requires_db=False),
+    "donate_message": MessageTemplate(key="donate_message", text="{text}", requires_db=False),
+    "stars_message": MessageTemplate(key="stars_message", text="{text}", requires_db=False),
+}
+AUTOREPLY_TEMPLATES: Dict[str, MessageTemplate] = {
+    "response": MessageTemplate(key="response", text="{text}", requires_db=False),
+}
+AUTODELIVERY_TEMPLATES: Dict[str, MessageTemplate] = {
+    "delivery_message": MessageTemplate(key="delivery_message", text="{text}", requires_db=False),
+}
+```
+
+#### 10.2 Removed HTTP fallbacks from plugins
+**File:** `plugins/autosmm_plugin.py`
+```python
+# Before:
+if self._msg_manager:
+    self._msg_manager.send(...)
+    return
+# fallback: HTTP POST /api/seller/chats/{}/send
+
+# After:
+if self._msg_manager:
+    self._msg_manager.send(...)
+    return
+self._log("[MessageManager] Not available, cannot send message", level="warn")
+```
+
+Same for `autodonate_plugin.py` and `stars_plugin.py`.
+
+#### 10.3 seller_service uses MessageManager
+**File:** `runtime/seller_service.py`
+```python
+# autoreply test:
+if getattr(self, "message_manager", None) is not None:
+    self.message_manager.send("", chat_id, "autoreply", "response", {"text": text}, force=True)
+else:
+    acc.send_message(chat_id, text=text)  # fallback
+
+# autodelivery:
+if getattr(self, "message_manager", None) is not None:
+    self.message_manager.send("", chat_id, "autodelivery", "delivery_message", {"text": content_text}, force=True)
+else:
+    acc.send_message(chat_id, text=content_text)  # fallback
+```
+
+#### 10.4 Injected MessageManager into seller_service
+**File:** `hub_bootstrap.py`
+```python
+if _svc_for_mm is not None:
+    _svc_for_mm.message_manager = _msg_manager
+```
+
+#### 10.5 Fixed indentation error
+**File:** `runtime/seller_service.py` line 3607
+- Orphaned `except Exception as e:` after CCE migration
+- Wrapped send + logging block in `try/except`
+
+### Results
+- All plugins use MessageManager exclusively
+- Direct HTTP fallbacks removed
+- seller_service autoreply/autodelivery use MessageManager
+- CCE is now the central messaging hub
+
+### Verification
+```bash
+$ python -m compileall runtime bot plugins web
+# OK - no syntax errors
+
+$ python -m pytest tests/ -x -q
+# 9 passed
+```
+
+### Commits
+- `248f80d` - feat(CCE): complete Customer Communication Engine migration
+- `0266a23` - fix(seller_service): restore indentation after CCE migration
+
+---
+
 # 1. Project tree
 
 ```
