@@ -19,14 +19,26 @@ def _get_observability():
 
 
 def _seed_demo_logs(rl):
-    if rl.count() > 0:
-        return
-    rl.info("RuntimeController", "Система запущена")
-    rl.info("PluginManager", "Загружено 4 плагина")
-    rl.warning("AutoResponse", "Низкая скорость ответа")
-    rl.error("NewMessageView", "Не удалось подключиться к серверу")
-    rl.info("AutoDelivery", "Обработано 12 заказов")
-    rl.debug("EventBus", "Подписчик зарегистрирован: dashboard")
+    return
+
+
+def _read_app_log(limit=200, level=None, source=None, search=None):
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    log_path = os.path.join(root, "logs", "app.log")
+    if not os.path.exists(log_path):
+        return []
+    entries = []
+    try:
+        with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+        for line in lines[-limit * 2:]:
+            line = line.strip()
+            if not line:
+                continue
+            entries.append({"raw": line})
+    except Exception:
+        return []
+    return entries[-limit:]
 
 
 @logs_bp.route("/api/logs")
@@ -47,7 +59,24 @@ def list_logs():
     if source:
         entries = [e for e in entries if source.lower() in e["source"].lower()]
     if search:
-        entries = [e for e in entries if search in e["message"].lower() or search in e["source"].lower()]
+        entries = [e for e in entries if search in e.get("message", "").lower() or search in e.get("source", "").lower()]
+    entries = entries[-limit:]
+
+    file_entries = _read_app_log(limit=limit, level=level_str, source=source, search=search)
+    if file_entries:
+        for fe in file_entries:
+            raw = fe.get("raw", "")
+            if search and search not in raw.lower():
+                continue
+            entries.append({
+                "time": "",
+                "timestamp": 0,
+                "level": "INFO",
+                "source": "app.log",
+                "message": raw,
+            })
+
+    entries.sort(key=lambda e: e.get("timestamp", 0) or 0)
     entries = entries[-limit:]
     return jsonify({"logs": entries, "count": len(entries)})
 

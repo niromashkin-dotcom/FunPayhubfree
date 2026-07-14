@@ -91,12 +91,13 @@ def get_plugins_keyboard(autosmm_enabled: bool, autodonate_enabled: bool) -> Inl
 
 
 def get_plugin_detail_keyboard(plugin_name: str, is_active: bool) -> InlineKeyboardMarkup:
+    alias = "autosmm" if plugin_name == "autosmm_plugin" else "autodonate" if plugin_name == "autodonate_plugin" else plugin_name
     action = "⏹️ Остановить" if is_active else "▶️ Запустить"
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=action, callback_data=f"{plugin_name}_toggle")],
-        [InlineKeyboardButton(text="🚫 Деактивировать лоты", callback_data=f"{plugin_name}_deactivate")],
+        [InlineKeyboardButton(text=action, callback_data=f"{alias}_toggle")],
+        [InlineKeyboardButton(text="🚫 Деактивировать лоты", callback_data=f"{alias}_deactivate")],
         [
-            InlineKeyboardButton(text="📊 Статус", callback_data=f"{plugin_name}_status"),
+            InlineKeyboardButton(text="📊 Статус", callback_data=f"{alias}_status"),
             InlineKeyboardButton(text="⬅️ Назад", callback_data="plugins_panel"),
         ],
     ])

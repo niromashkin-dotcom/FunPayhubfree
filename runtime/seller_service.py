@@ -3934,13 +3934,25 @@ class SellerService:
             status = "error"
         elif any(i["level"] == "warning" for i in issues):
             status = "warning"
+
+        cpu_percent = None
+        memory_percent = None
+        try:
+            import psutil
+            cpu_percent = psutil.cpu_percent(interval=0.5)
+            memory_percent = psutil.virtual_memory().percent
+        except Exception:
+            pass
+
         return {
             "available": True,
             "status": status,
             "issues": issues,
             "issues_count": len(issues),
             "backups_count": backups.get("total", 0),
-            "configs_count": len(self._backup_targets())
+            "configs_count": len(self._backup_targets()),
+            "cpu_percent": cpu_percent,
+            "memory_percent": memory_percent,
         }
 
     def generate_ai_recommendations(self, force_refresh: bool = False) -> dict:

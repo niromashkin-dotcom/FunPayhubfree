@@ -307,7 +307,7 @@ async def cb_lots(query: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "lots_menu")
 async def cb_lots_menu(query: CallbackQuery) -> None:
-    await _safe_edit(query, "🛒 <b>Управление лотами</b>\n─" * 18 + "\nВыберите действие:", get_lots_menu())
+    await _safe_edit(query, "🛒 <b>Управление лотами</b>\n" + "─" * 40 + "\nВыберите действие:", get_lots_menu())
 
 
 @router.callback_query(F.data == "lots_create_all")

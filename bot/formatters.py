@@ -454,7 +454,7 @@ def format_hub_stop(ok: bool, msg: str, pid: int | None = None) -> str:
 
 def format_ai_agent(data: dict) -> str:
     if not isinstance(data, dict):
-        return "🤖 <b>AI Agent</b>\n─" * 15 + "\n❌ Нет данных"
+        return "🤖 <b>AI Agent</b>\n" + "─" * 25 + "\n❌ Нет данных"
 
     status = data.get("status", "unknown")
     ai_data = data.get("ai_agent", {})
