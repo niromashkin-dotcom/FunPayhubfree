@@ -3592,14 +3592,15 @@ class SellerService:
                     result["items"].append({"order_id": order_id, "result": "dry_run", "preview": content_text[:200]})
                     result["delivered"] += 1
                     continue
-                if getattr(self, "message_manager", None) is not None:
-                    try:
-                        self.message_manager.send("", str(chat_id), "autodelivery", "delivery_message", {"text": content_text}, force=True)
-                    except Exception:
-                        pass
-                else:
-                    acc.send_message(chat_id, text=content_text)
-                if binding.get("mode") == "stock" and stock_item:
+                try:
+                    if getattr(self, "message_manager", None) is not None:
+                        try:
+                            self.message_manager.send("", str(chat_id), "autodelivery", "delivery_message", {"text": content_text}, force=True)
+                        except Exception:
+                            pass
+                    else:
+                        acc.send_message(chat_id, text=content_text)
+                    if binding.get("mode") == "stock" and stock_item:
                         stock = self._load_stock(binding.get("lot_id"))
                         if stock and stock[0] == stock_item:
                             stock.pop(0)
