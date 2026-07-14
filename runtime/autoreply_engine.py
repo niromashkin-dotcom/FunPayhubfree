@@ -288,10 +288,9 @@ class AutoReplyEngine:
             print(f"[AutoReply] Chat {chat_id} locked by '{owner}' — skip")
             return False
         try:
-            if self._msg_manager:
-                self._msg_manager.send("", chat_id, "autoreply", "response", {"text": text}, force=True)
-            else:
-                res = self.svc.send_chat_message(chat_id, text, dry_run=False)
+            if self._msg_manager is None:
+                raise RuntimeError("MessageManager missing: autoreply must go through CCE")
+            self._msg_manager.send("", chat_id, "autoreply", "response", {"text": text}, force=True)
             print(f"[AutoReply] Sent to chat {chat_id}: {text[:80]}")
             return True
         except Exception as e:

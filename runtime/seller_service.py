@@ -3329,13 +3329,12 @@ class SellerService:
                     log.append(log_entry)
                     self._save_autoreply_log(log)
                     return {"ok": True, "dry_run": True, "text": text, "message": "Проверка пройдена. Сообщение НЕ отправлено."}
-                if getattr(self, "message_manager", None) is not None:
-                    try:
-                        self.message_manager.send("", str(chat_id), "autoreply", "response", {"text": text}, force=True)
-                    except Exception:
-                        pass
-                else:
-                    acc.send_message(chat_id, text=text)
+                if getattr(self, "message_manager", None) is None:
+                    raise RuntimeError("MessageManager missing: autoreply must go through CCE")
+                try:
+                    self.message_manager.send("", str(chat_id), "autoreply", "response", {"text": text}, force=True)
+                except Exception:
+                    pass
                 log_entry = {
                     "timestamp": _t.time(),
                     "date": _t.strftime("%Y-%m-%d %H:%M:%S", _t.localtime()),
@@ -3593,13 +3592,9 @@ class SellerService:
                     result["delivered"] += 1
                     continue
                 try:
-                    if getattr(self, "message_manager", None) is not None:
-                        try:
-                            self.message_manager.send("", str(chat_id), "autodelivery", "delivery_message", {"text": content_text}, force=True)
-                        except Exception:
-                            pass
-                    else:
-                        acc.send_message(chat_id, text=content_text)
+                    if getattr(self, "message_manager", None) is None:
+                        raise RuntimeError("MessageManager missing: autodelivery must go through CCE")
+                    self.message_manager.send("", str(chat_id), "autodelivery", "delivery_message", {"text": content_text}, force=True)
                     if binding.get("mode") == "stock" and stock_item:
                         stock = self._load_stock(binding.get("lot_id"))
                         if stock and stock[0] == stock_item:
