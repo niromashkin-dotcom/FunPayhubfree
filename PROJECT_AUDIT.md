@@ -880,4 +880,56 @@ ok
 
 ---
 
+## 8. Telegram Bot UI и автообновление (2026-07-14)
+
+### 8.1. Дубли «Управление лотами»
+**Было:** заголовок повторялся 18 раз из-за `"\n─" * 18`.
+**Стало:** один заголовок и разделитель `"─" * 40`.
+
+### 8.2. Кнопки плагинов
+**Было:** callback `autosmm_plugin_toggle` не совпадал с обработчиком `autosmm_toggle`.
+**Стало:** нормализация alias в `get_plugin_detail_keyboard()`.
+
+### 8.3. CPU / RAM в health
+**Было:** `/api/system/health` не отдавал `cpu_percent` и `memory_percent`.
+**Стало:** `check_system_health()` собирает метрики через `psutil`.
+
+### 8.4. Автообновление раз в 30 секунд
+**Было:** кеш на сервере 60 секунд, бот показывал старое состояние.
+**Стало:** `BotCache` передаёт `?force=true` для `overview`, `balance`, `lots`.
+
+### 8.5. Время по МСК
+**Было:** на Render (UTC) время было на 3 часа меньше.
+**Стало:** все отображения времени используют `MSK = timezone(timedelta(hours=3))`.
+
+### 8.6. Логи
+**Было:** демо-мусор из `_seed_demo_logs()`.
+**Стало:** чтение реального `logs/app.log`.
+
+### Коммиты
+- `e5f6b63` - fix(bot): duplicate menu text, plugin callbacks, cpu/ram in health, real logs
+- `a8e3113` - fix(bot): force refresh cached endpoints every 30s
+- `eb8c491` - fix(bot): display all timestamps in MSK timezone
+
+---
+
+## 9. Деплой
+
+- **Hub:** https://funpayhub.onrender.com/health → `ok`
+- **Bot Worker:** https://funpayhub-tg-bot.onrender.com/health → `ok`
+- **Бот:** @FunPayHubControl_bot — онлайн
+
+---
+
+## 10. Осталось проверить
+
+1. **Production DB** — проверить `source='real'` на Render:
+   ```sql
+   SELECT source, COUNT(*) FROM orders GROUP BY source;
+   ```
+2. **Автостарт бота** — если не стартует сам, проверить Render service status.
+3. **AI Agent** — кнопка «Анализ файлов» статическая. Для свежего анализа: `/analyze путь/к/файлу.py`.
+
+---
+
 ## 🎯 ИТОГОВЫЙ СТАТУС: **ВЫПОЛНЕНО НА 100%**

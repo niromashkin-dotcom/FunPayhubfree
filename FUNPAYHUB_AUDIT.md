@@ -2,6 +2,239 @@
 
 > Automated static analysis. Line numbers refer to original source files.
 
+---
+
+## AUDIT SESSION: 2026-07-13 → 2026-07-14
+
+### Summary
+This session fixed critical data integrity issues in the reporting system and Telegram bot UI. All changes were committed and deployed to Render.
+
+---
+
+## 6. Report System Data Source Fix (2026-07-13)
+
+### Problem
+Evening report at 21:00 showed **11106 orders** with **150 ₽** revenue (0.013 ₽ per order — impossible). Test/simulation orders were included in reports.
+
+### Solution
+
+#### 6.1 Added `source` field to Order model
+**File:** `runtime/database/models.py`
+```python
+source = Column(String(32), default="real", nullable=False, index=True)
+```
+
+#### 6.2 Updated Repository.create_order()
+**File:** `runtime/database/repository.py`
+```python
+def create_order(..., source: str = "real") -> Order:
+    order = Order(..., source=source)
+```
+
+#### 6.3 Filtered Ledger queries
+**File:** `runtime/database/ledger.py`
+```python
+def get_balance_snapshot(..., real_only: bool = True):
+    if real_only:
+        query = query.join(Order, Transaction.order_id == Order.id)
+        query = query.filter(Order.source == "real")
+
+def get_daily_report(..., real_only: bool = True):
+    query = session.query(func.count(Order.id)).filter(...)
+    if real_only:
+        query = query.filter(Order.source == "real")
+```
+
+#### 6.4 Updated dashboard stats
+**File:** `runtime/database/repository.py`
+```python
+total_orders = session.query(func.count(Order.id)).filter(Order.source == "real").scalar() or 0
+total_income = session.query(func.sum(Transaction.amount)).join(Order, ...).filter(Order.source == "real").scalar() or 0.0
+```
+
+#### 6.5 Added data source annotations
+**File:** `runtime/report_engine.py`
+```python
+f"📦 Заказов: {orders}"
+f"   Источник: orders.db WHERE source='real' AND started_at в периоде"
+f"💰 Доход: {income:.2f} ₽"
+f"   Источник: transactions WHERE type='funpay_income' + JOIN orders(source='real')"
+```
+
+#### 6.6 Automatic DB migration
+**File:** `runtime/database/base.py`
+```python
+def _migrate_add_order_source(engine):
+    conn.execute("ALTER TABLE orders ADD COLUMN source VARCHAR(32) DEFAULT 'real' NOT NULL")
+    _mark_existing_test_orders(conn)  # sim_*, ORD*, db_stress_* → simulation
+```
+
+#### 6.7 Updated test scripts
+**File:** `scripts/run_simulation.py`
+```python
+order = repo.create_order(..., source="simulation")
+```
+**File:** `scripts/acceptance_test.py`
+```python
+repo.create_order(..., source="acceptance_test")
+```
+
+#### 6.8 Restored SupplierOrderRegistry
+**File:** `runtime/order_tracker.py`
+- Restored class for plugin idempotency
+- Fixed `autosmm_plugin` and `autodonate_plugin` imports
+
+### Results
+- Reports now show only real orders
+- Each field has source annotation
+- Dashboard displays accurate statistics
+- Lot scaling based on real sales only
+
+### Commits
+- `b533697` - fix(reports): exclude simulation/test data from reports
+- `56662f2` - docs(audit): add report system data sources fix section
+- `95d7acc` - docs(audit): complete report system audit with full details
+
+---
+
+## 7. Telegram Bot UI and Auto-Refresh Fixes (2026-07-14)
+
+### 7.1 Fixed duplicate menu text
+**File:** `bot/handlers/callbacks.py`
+```python
+# Before:
+await _safe_edit(query, "🛒 <b>Управление лотами</b>\n─" * 18 + "\nВыберите действие:", get_lots_menu())
+# After:
+await _safe_edit(query, "🛒 <b>Управление лотами</b>\n" + "─" * 40 + "\nВыберите действие:", get_lots_menu())
+```
+
+### 7.2 Fixed plugin callback mismatch
+**File:** `bot/keyboards/main.py`
+```python
+def get_plugin_detail_keyboard(plugin_name: str, is_active: bool):
+    alias = "autosmm" if plugin_name == "autosmm_plugin" else "autodonate" if plugin_name == "autodonate_plugin" else plugin_name
+    action = "⏹️ Остановить" if is_active else "▶️ Запустить"
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=action, callback_data=f"{alias}_toggle")],
+        ...
+    ])
+```
+
+### 7.3 Added CPU/RAM to health check
+**File:** `runtime/seller_service.py`
+```python
+def check_system_health(self) -> dict:
+    ...
+    try:
+        import psutil
+        cpu_percent = psutil.cpu_percent(interval=0.5)
+        memory_percent = psutil.virtual_memory().percent
+    except Exception:
+        pass
+    return {
+        ...
+        "cpu_percent": cpu_percent,
+        "memory_percent": memory_percent,
+    }
+```
+
+### 7.4 Fixed auto-refresh every 30 seconds
+**File:** `bot/services/cache_service.py`
+```python
+class BotCache:
+    def register(self, key: str, path: str, ttl: float | None = None, force: bool = False) -> None:
+        self._paths[key] = (path, ttl if ttl is not None else self.default_ttl, force)
+
+    async def get(self, key: str, ..., force: bool = False):
+        ...
+        if force:
+            sep = "&" if "?" in path else "?"
+            path = f"{path}{sep}force=true"
+        data = await api_client.get(path)
+
+bot_cache.register("overview", "/api/seller/overview", ttl=30, force=True)
+bot_cache.register("balance", "/api/seller/balance/full", ttl=30, force=True)
+bot_cache.register("lots", "/api/seller/lots", ttl=30, force=True)
+```
+
+### 7.5 Fixed timezone to MSK
+**File:** `bot/formatters.py`
+```python
+from datetime import timezone, timedelta
+MSK = timezone(timedelta(hours=3))
+
+def _ts(ts_val: float | None = None) -> str:
+    if ts_val:
+        dt = datetime.datetime.fromtimestamp(ts_val, tz=MSK)
+    else:
+        dt = datetime.datetime.now(MSK)
+    return dt.strftime("%d.%m.%Y %H:%M")
+```
+**File:** `plugins/telegram_notifier_plugin.py`
+```python
+updated_str = datetime.fromtimestamp(updated, tz=timezone.utc).astimezone(MSK).strftime("%d.%m.%Y %H:%M") if updated else "—"
+```
+
+### 7.6 Fixed logs API
+**File:** `web/logs_api.py`
+- Removed demo log seeding
+- Added real `logs/app.log` reading:
+```python
+def _read_app_log(limit=200, level=None, source=None, search=None):
+    log_path = os.path.join(root, "logs", "app.log")
+    ...
+    with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+        lines = f.readlines()
+```
+
+### Results
+- Bot UI no longer has duplicate text
+- Plugin buttons work correctly
+- CPU/RAM displayed in health check
+- Bot auto-refreshes data every 30 seconds
+- All timestamps displayed in MSK (UTC+3)
+- Logs show real application output, not demo data
+
+### Commits
+- `e5f6b63` - fix(bot): duplicate menu text, plugin callbacks, cpu/ram in health, real logs
+- `a8e3113` - fix(bot): force refresh cached endpoints every 30s
+- `eb8c491` - fix(bot): display all timestamps in MSK timezone
+
+---
+
+## 8. Deployment Status
+
+### Current Status
+- **Hub:** https://funpayhub.onrender.com/health → `ok`
+- **Bot Worker:** https://funpayhub-tg-bot.onrender.com/health → `ok`
+- **Bot:** @FunPayHubControl_bot (id=8811804174) — online
+
+### Recent Commits
+```
+eb8c491 fix(bot): display all timestamps in MSK timezone
+a8e3113 fix(bot): force refresh cached endpoints every 30s
+e5f6b63 fix(bot): duplicate menu text, plugin callbacks, cpu/ram in health, real logs
+b533697 fix(reports): exclude simulation/test data from reports
+56662f2 docs(audit): add report system data sources fix section
+95d7acc docs(audit): complete report system audit with full details
+```
+
+---
+
+## 9. Pending Verification
+
+1. **Production DB audit** — verify `source='real'` distribution on Render:
+   ```sql
+   SELECT source, COUNT(*) FROM orders GROUP BY source;
+   SELECT id, funpay_order_id, source FROM orders WHERE source='real' LIMIT 20;
+   ```
+
+2. **Bot auto-start** — if `funpayhub-tg-bot` doesn't start automatically, check Render service status and logs for 502/504 errors.
+
+3. **AI Agent analysis** — button works correctly, shows static TODO/FIXME/BUG markers. For fresh analysis use `/analyze path/to/file.py`.
+
+---
+
 # 1. Project tree
 
 ```
