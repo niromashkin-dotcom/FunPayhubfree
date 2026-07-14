@@ -17,6 +17,7 @@ from runtime.messages.error_messages import ErrorMessages
 from runtime.messages.review_messages import ReviewMessages
 from runtime.messages.notification_messages import NotificationMessages
 from runtime.messages.recovery_messages import RecoveryMessages
+from runtime.real_mode import RealModeConstraints
 
 logger = logging.getLogger("FunPayHUB.OrderFlow")
 
@@ -44,6 +45,7 @@ class OrderFlowManager:
         self.TIMEOUT_MINUTES = 25
         self.CHECK_INTERVAL = 5
         self.BONUS_TEXT = "При следующем заказе — 2 накрутки по цене одной ✨"
+        self._real_mode = RealModeConstraints()
 
     def start(self):
         self._eb.subscribe("new_order", self._on_new_order, priority=80)
@@ -68,6 +70,11 @@ class OrderFlowManager:
             service_tag = self._extract_tag(title)
 
             if not order_id or not chat_id:
+                return
+
+            rm_check = self._real_mode.check_order(order_id, price, chat_id)
+            if not rm_check.get("allowed", True):
+                logger.warning("[OrderFlow] REAL_MODE blocked order %s: %s", order_id, rm_check.get("reason"))
                 return
 
             with self._lock:
@@ -280,11 +287,27 @@ class OrderFlowManager:
         order["bonus_given"] = True
         self._update_step(order_id, 7)
         self._db_update_order(order_id, status="refunded", timeout_refunded=True)
+        logger.error("ORDER_FAILED: order_id=%s reason=timeout_refund price=%.2f", order_id, price)
+        try:
+            if getattr(self, "_eb", None):
+                self._eb.emit("order_failed", {
+                    "order_id": order_id,
+                    "status": "timeout_refunded",
+                    "source": "order_flow",
+                    "reason": f"Auto-refund after {self.TIMEOUT_MINUTES} min timeout",
+                    "price": price,
+                })
+        except Exception:
+            pass
         logger.info(f"[OrderFlow] Auto-refund for {order_id}")
 
     def on_order_completed(self, order_id: str, details: Optional[str] = None):
         order = self._orders.get(order_id)
         if not order:
+            return
+        if self._real_mode.require_manual_delivery(order_id):
+            logger.info("[OrderFlow] REAL_MODE: order %s pending manual delivery", order_id)
+            self._send_admin(f"REAL_MODE: Заказ {order_id} требует ручной доставки")
             return
         chat_id = order["chat_id"]
         OrderMessages(self._msg_manager).on_completed(order_id, chat_id, order)

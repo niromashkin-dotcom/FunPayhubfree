@@ -6,6 +6,7 @@ try:
     from runtime.lot_generator import LotGenerator
 except Exception:
     LotGenerator = None
+from runtime.database.models import Order, Transaction
 
 seller_bp = Blueprint("seller", __name__)
 
@@ -668,6 +669,61 @@ def system_health():
 def ai_advisor():
     force = request.args.get("force", "false").lower() == "true"
     return jsonify(svc.generate_ai_recommendations(force_refresh=force))
+
+
+@seller_bp.route("/api/admin/profit")
+def admin_profit():
+    period = request.args.get("period", "today")
+    from runtime.database.ledger import Ledger
+    from runtime.database.base import get_session
+    from sqlalchemy import func
+    from datetime import datetime, timezone, timedelta
+
+    now = datetime.now(timezone.utc)
+    if period == "today":
+        since = datetime(now.year, now.month, now.day, tzinfo=timezone.utc).timestamp()
+    elif period == "week":
+        since = (now - timedelta(days=7)).timestamp()
+    elif period == "month":
+        since = (now - timedelta(days=30)).timestamp()
+    else:
+        since = 0
+
+    report = Ledger.get_daily_report(since, now.timestamp(), real_only=True)
+    income = report.get("total_income", 0)
+    expenses = report.get("total_expenses", 0)
+    profit = report.get("total_profit", 0)
+
+    session = get_session()
+    try:
+        order_count = session.query(func.count()).select_from(Order).filter(
+            Order.started_at >= since,
+            Order.source == "real"
+        ).scalar() or 0
+        commission = session.query(func.sum(Transaction.amount)).filter(
+            Transaction.type == "commission",
+            Transaction.created_at >= since,
+        ).scalar() or 0.0
+        provider = session.query(func.sum(Transaction.amount)).filter(
+            Transaction.type == "provider_payment",
+            Transaction.created_at >= since,
+        ).scalar() or 0.0
+    finally:
+        session.close()
+
+    return jsonify({
+        "ok": True,
+        "period": period,
+        "orders": order_count,
+        "revenue": float(income),
+        "costs": float(abs(provider)),
+        "commission": float(abs(commission)),
+        "profit": float(profit),
+        "discrepancies": {
+            "orders_price_sum_vs_income": None,
+            "note": "Compare orders.price SUM with transactions.funpay_income SUM to catch mismatches"
+        }
+    })
 
 
 # B17: badges endpoint

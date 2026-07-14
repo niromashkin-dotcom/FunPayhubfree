@@ -21,10 +21,11 @@ def init_db():
     import runtime.database.models  # load models
     Base.metadata.create_all(bind=engine)
     
+    from sqlalchemy import text
     # Execute PRAGMA statements to enable WAL mode
     with engine.connect() as conn:
-        conn.execute(engine.dialect.statement_compiler(engine.dialect, None).statement(None, "PRAGMA journal_mode=WAL;"))
-        conn.execute(engine.dialect.statement_compiler(engine.dialect, None).statement(None, "PRAGMA synchronous=NORMAL;"))
+        conn.execute(text("PRAGMA journal_mode=WAL;"))
+        conn.execute(text("PRAGMA synchronous=NORMAL;"))
 
 def get_db():
     db = SessionLocal()

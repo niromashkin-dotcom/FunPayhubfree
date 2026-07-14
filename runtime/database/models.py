@@ -31,6 +31,7 @@ class Order(Base):
 
 class EventJournalStatus(str, enum.Enum):
     PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
     PROCESSED = "PROCESSED"
     FAILED = "FAILED"
 

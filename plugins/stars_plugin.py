@@ -106,6 +106,18 @@ class StarsPlugin(PluginBase):
                 self._send_message(chat_id, DEFAULT_CONFIG["msg_completed"].format(stars=stars_count))
             elif status == "failed":
                 self._send_message(chat_id, DEFAULT_CONFIG["msg_error"].format(error="не удалось зачислить звёзды"))
+                logger.error("ORDER_FAILED: order_id=%s fragment_order_id=%s status=stars_failed", order_id, fragment_order["fragment_order_id"])
+                try:
+                    if getattr(self, "event_bus", None):
+                        self.event_bus.emit("order_failed", {
+                            "order_id": order_id,
+                            "fragment_order_id": fragment_order["fragment_order_id"],
+                            "status": "stars_failed",
+                            "source": "stars_plugin",
+                            "reason": "Failed to credit stars",
+                        })
+                except Exception:
+                    pass
             else:
                 # pending — информируем, что проверяем
                 self._send_message(chat_id, f"⏳ Заказ обрабатывается... Проверяем статус через минуту.")

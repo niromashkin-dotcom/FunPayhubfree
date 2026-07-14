@@ -41,30 +41,47 @@ class EventBus:
             print(f"[EventBus] Failed to save event to journal: {e}")
             return None
 
-    def _mark_processed(self, journal_id: int):
+    def _mark_processing(self, journal_id: int):
         from runtime.database.database import SessionLocal
         from runtime.database.repositories import EventJournalRepository
         try:
             with SessionLocal() as db:
                 repo = EventJournalRepository(db)
-                repo.mark_processed(journal_id)
+                repo.mark_processing(journal_id)
         except Exception as e:
-            print(f"[EventBus] Failed to mark event as processed: {e}")
+            pass
+
+    def _mark_processed(self, journal_id: int, failed: bool = False):
+        from runtime.database.database import SessionLocal
+        from runtime.database.repositories import EventJournalRepository
+        try:
+            with SessionLocal() as db:
+                repo = EventJournalRepository(db)
+                if failed:
+                    repo.mark_failed(journal_id)
+                else:
+                    repo.mark_processed(journal_id)
+        except Exception as e:
+            print(f"[EventBus] Failed to mark event as processed/failed: {e}")
 
     def emit(self, event_type: str, event: Any) -> None:
         journal_id = self._save_event(event_type, event)
+        if journal_id:
+            self._mark_processing(journal_id)
         
         with self._lock:
             handlers = self._listeners.get(event_type, []).copy()
             
+        has_error = False
         for handler in handlers:
             try:
                 handler(event_type, event)
             except Exception as e:
                 print(f"[EventBus] Handler error: {e}")
+                has_error = True
                 
         if journal_id:
-            self._mark_processed(journal_id)
+            self._mark_processed(journal_id, failed=has_error)
 
     def publish(self, event_type: str, event: Any) -> None:
         self.emit(event_type, event)

@@ -40,15 +40,18 @@ class AIAgentService:
         self._scan_task: Optional[asyncio.Task] = None
         self._log_path: Path = Path("logs/app.log")
         self._project_root: Path = Path(".").resolve()
+        self._event_bus = None
+        self._order_failed_sub = None
 
     def configure(self, admin_chat_id: str, llm_api_keys: List[Dict[str, str]],
                   github_token: str = "", render_api_key: str = "",
-                  render_service_id: str = "") -> None:
+                  render_service_id: str = "", event_bus=None) -> None:
         self._admin_chat_id = admin_chat_id
         self._llm_providers = llm_api_keys or []
         self._github_token = github_token
         self._render_api_key = render_api_key
         self._render_service_id = render_service_id
+        self._event_bus = event_bus
 
     def is_ready(self) -> bool:
         return bool(self._llm_providers and self._admin_chat_id)
@@ -62,6 +65,14 @@ class AIAgentService:
             return
         self._bot = bot
         self._scan_task = asyncio.create_task(self._scanner_loop())
+        if self._event_bus:
+            try:
+                self._order_failed_sub = self._event_bus.subscribe(
+                    "order_failed", self._on_order_failed_event, priority=10
+                )
+                logger.info("[AIAgent] Подписан на order_failed события")
+            except Exception as exc:
+                logger.warning("[AIAgent] Не удалось подписаться на order_failed: %s", exc)
         logger.info("[AIAgent] Запущен 24/7 мониторинг. Провайдеров: %d", len(self._llm_providers))
 
     async def stop(self) -> None:
@@ -71,7 +82,78 @@ class AIAgentService:
                 await self._scan_task
             except asyncio.CancelledError:
                 pass
+        if self._event_bus and self._order_failed_sub:
+            try:
+                self._event_bus.unsubscribe("order_failed", self._order_failed_sub)
+            except Exception:
+                pass
         logger.info("[AIAgent] Остановлен")
+
+    async def _on_order_failed_event(self, event: Dict[str, Any]) -> None:
+        """Обработка ORDER_FAILED события — анализ и предложение админу."""
+        try:
+            order_id = event.get("order_id") if isinstance(event, dict) else getattr(event, "order_id", None)
+            reason = event.get("reason") or event.get("error") or event.get("status") or "unknown"
+            source = event.get("source", "runtime")
+            context_lines = [
+                f"ORDER_FAILED: order_id={order_id}",
+                f"reason={reason}",
+                f"source={source}",
+            ]
+            if isinstance(event, dict) and "title" in event:
+                context_lines.append(f"title={event['title']}")
+            if isinstance(event, dict) and "price" in event:
+                context_lines.append(f"price={event['price']}")
+            logger.warning("[AIAgent] ORDER_FAILED received: %s", context_lines[0])
+
+            analysis = await self._call_llm_with_failure_analysis(context_lines)
+            if not analysis:
+                return
+
+            patch = PatchProposal(
+                patch_id=f"patch_{int(time.time())}",
+                diagnosis=analysis.get("diagnosis", "Order failure"),
+                patch=analysis.get("action", "manual"),
+                file=analysis.get("file", "runtime"),
+                confidence=int(analysis.get("confidence", 50)),
+            )
+            self._pending_patches.append(patch)
+            await self._notify_order_failure(patch, order_id, reason)
+        except Exception as exc:
+            logger.error("[AIAgent] ORDER_FAILED handler error: %s", exc)
+
+    async def _call_llm_with_failure_analysis(self, context_lines: List[str]) -> Optional[Dict[str, Any]]:
+        prompt = (
+            "Ты — AI инженер FunPay Hub. Заказ завершился ошибкой.\n"
+            "Проанализируй причину и предложи действие.\n"
+            "Верни строго JSON: {\"diagnosis\": str, \"action\": str, \"file\": str, \"confidence\": int}\n"
+            "Доступные действия: manual (отчёт админу), restart_service, deploy, patch_file\n"
+            "Не предлагай автоисправление кода — только диагноз и рекомендацию.\n"
+            "Context:\n" + "\n".join(context_lines)
+        )
+        for provider in self._llm_providers:
+            try:
+                return await self._call_llm(provider, [prompt])
+            except Exception as exc:
+                logger.warning("[AIAgent] LLM provider %s failed for ORDER_FAILED: %s", provider.get("name", "?"), exc)
+        return None
+
+    async def _notify_order_failure(self, patch: PatchProposal, order_id: Optional[str], reason: str) -> None:
+        if not self._admin_chat_id or not self._bot:
+            return
+        text = (
+            f"⚠️ <b>ORDER FAILED</b>\n"
+            f"🆔 Order: {order_id or '—'}\n"
+            f"🔍 <b>Диагноз:</b> {patch.diagnosis}\n"
+            f"🎯 <b>Рекомендация:</b> {patch.patch}\n"
+            f"📁 <b>Файл:</b> {patch.file}\n"
+            f"📊 <b>Уверенность:</b> {patch.confidence}%\n"
+            f"💬 <b>Причина:</b> {reason}"
+        )
+        try:
+            await self._bot.send_message(chat_id=self._admin_chat_id, text=text)
+        except Exception as exc:
+            logger.error("[AIAgent] ORDER_FAILED notify failed: %s", exc)
 
     async def _scanner_loop(self) -> None:
         while True:

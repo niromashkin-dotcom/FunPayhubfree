@@ -260,7 +260,19 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
             if verbose:
                 print("[Bootstrap] MessageManager injected into plugins")
         except Exception as _e_inj:
-            print(f"[Bootstrap] MessageManager injection failed: {_e_inj}")
+             print(f"[Bootstrap] MessageManager injection failed: {_e_inj}")
+
+    # 3.2 Real Order Monitor Mode (dry-run)
+    _monitor = None
+    if os.environ.get("REAL_ORDER_MONITOR_MODE", "false").lower() == "true":
+        try:
+            from runtime.monitor_mode import RealOrderMonitor
+            _monitor = RealOrderMonitor(event_bus=event_bus)
+            _monitor.start()
+            if verbose:
+                print("[Bootstrap] RealOrderMonitor started (REAL_ORDER_MONITOR_MODE=true)")
+        except Exception as _e_mon:
+            print(f"[Bootstrap] RealOrderMonitor failed: {_e_mon}")
 
     # 4. Load plugins from plugins/
     if plugin_manager:
@@ -464,7 +476,7 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
     except Exception as _ew_ab:
         print("[Bootstrap] Auto backup failed: " + str(_ew_ab))
 
-    return runtime_controller, runtime_log, notification_manager, event_bus, _msg_manager
+    return runtime_controller, runtime_log, notification_manager, event_bus, _msg_manager, _monitor
 
 
 # ---------------------------------------------------------------------

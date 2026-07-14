@@ -52,11 +52,23 @@ class EventJournalRepository:
     def get_unprocessed_events(self):
         return self.db.query(EventJournal).filter(EventJournal.status == EventJournalStatus.PENDING.value).all()
 
+    def mark_processing(self, event_id: int):
+        event = self.db.query(EventJournal).filter(EventJournal.id == event_id).first()
+        if event:
+            event.status = EventJournalStatus.PROCESSING.value
+            self.db.commit()
+
     def mark_processed(self, event_id: int):
         event = self.db.query(EventJournal).filter(EventJournal.id == event_id).first()
         if event:
             event.status = EventJournalStatus.PROCESSED.value
             event.processed_at = datetime.utcnow()
+            self.db.commit()
+            
+    def mark_failed(self, event_id: int):
+        event = self.db.query(EventJournal).filter(EventJournal.id == event_id).first()
+        if event:
+            event.status = EventJournalStatus.FAILED.value
             self.db.commit()
 
 class LedgerRepository:

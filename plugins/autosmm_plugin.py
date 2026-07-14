@@ -357,6 +357,18 @@ class AutoSMMPlugin(PluginBase):
             self._refund_order(fp_order_id, reason=f"SMM order {status}")
         self._stats["failed"] += 1
         self._log(f"❌ Заказ #{tid} провален ({status})", level="warn")
+        logger.error("ORDER_FAILED: tid=%s status=%s fp_order_id=%s", tid, status, fp_order_id)
+        try:
+            if getattr(self, "event_bus", None):
+                self.event_bus.emit("order_failed", {
+                    "order_id": tid,
+                    "fp_order_id": fp_order_id,
+                    "status": status,
+                    "source": "autosmm",
+                    "reason": f"SMM order {status}",
+                })
+        except Exception:
+            pass
         with self._lock:
             self._active.pop(tid, None)
         self._save_active_orders()
