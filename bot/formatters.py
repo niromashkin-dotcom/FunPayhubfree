@@ -3,6 +3,9 @@ from __future__ import annotations
 import datetime
 from html import escape
 from typing import Any
+from datetime import timezone, timedelta
+
+MSK = timezone(timedelta(hours=3))
 
 
 def _text(value: Any, default: str = "—") -> str:
@@ -13,9 +16,9 @@ def _text(value: Any, default: str = "—") -> str:
 
 def _ts(ts_val: float | None = None) -> str:
     if ts_val:
-        dt = datetime.datetime.fromtimestamp(ts_val)
+        dt = datetime.datetime.fromtimestamp(ts_val, tz=MSK)
     else:
-        dt = datetime.datetime.now()
+        dt = datetime.datetime.now(MSK)
     return dt.strftime("%d.%m.%Y %H:%M")
 
 

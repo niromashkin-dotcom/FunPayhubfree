@@ -6,9 +6,12 @@ import time
 import threading
 import json
 import os
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, Dict, List
 from plugins.plugin_base import PluginBase
 from runtime.http_client import HTTPClient, HTTPClientError
+
+MSK = timezone(timedelta(hours=3))
 
 DEFAULT_CONFIG = {
     "enabled": True,
@@ -398,7 +401,7 @@ class TelegramNotifierPlugin(PluginBase):
         balance = data.get("balance", {})
         total = balance.get("total_rub", 0)
         updated = data.get("updated_at", 0)
-        updated_str = time.strftime("%d.%m.%Y %H:%M", time.localtime(updated)) if updated else "—"
+        updated_str = datetime.fromtimestamp(updated, tz=timezone.utc).astimezone(MSK).strftime("%d.%m.%Y %H:%M") if updated else "—"
         lines = [f"💰 Баланс: {total:.2f} ₽", f"🕐 Обновлено: {updated_str}", ""]
         history = data.get("history", [])
         if history:
