@@ -817,19 +817,18 @@ class SellerService:
 
     def get_chat_messages(self, chat_id, limit: int = 50) -> dict:
         with self._lock:
-            acc = self._get_account()
-            if acc is None:
-                return {"available": False, "error": self._last_error or "Нет авторизации", "messages": []}
             try:
-                raw = acc.get_chat_history(chat_id)
+                raw = self.order_service.chat_service.get_messages(chat_id)
                 messages = []
                 items = raw if isinstance(raw, list) else []
+                acc = self._get_account()
+                acc_id = acc.id if acc else None
                 for m in items[-limit:]:
                     text = getattr(m, "text", "") or ""
                     author = getattr(m, "author", "") or getattr(m, "author_id", "")
                     author_id = getattr(m, "author_id", None)
                     mid = getattr(m, "id", None)
-                    is_my = bool(getattr(m, "by_bot", False)) or (author_id == acc.id)
+                    is_my = bool(getattr(m, "by_bot", False)) or (author_id == acc_id)
                     messages.append({
                         "id": mid,
                         "text": str(text)[:1000],
@@ -839,22 +838,21 @@ class SellerService:
                     })
                 return {"available": True, "messages": messages, "count": len(messages)}
             except Exception as e:
-                return {"available": False, "error": _safe_error(e), "messages": []}
+                return {"available": False, "error": str(e), "messages": []}
 
     def send_chat_message(self, chat_id, text: str, dry_run: bool = True) -> dict:
         with self._lock:
-            acc = self._get_account()
-            if acc is None:
-                return {"ok": False, "error": self._last_error or "Нет авторизации"}
             if not text or not text.strip():
                 return {"ok": False, "error": "Пустое сообщение"}
             try:
                 if dry_run:
                     return {"ok": True, "dry_run": True, "chat_id": chat_id, "text": text}
-                acc.send_message(chat_id, text=text)
+                
+                # FACADE: delegating to ChatService
+                self.order_service.chat_service.send_message(chat_id, text)
                 return {"ok": True, "dry_run": False, "chat_id": chat_id, "text": text}
             except Exception as e:
-                return {"ok": False, "error": _safe_error(e)}
+                return {"ok": False, "error": str(e)}
 
 
 
