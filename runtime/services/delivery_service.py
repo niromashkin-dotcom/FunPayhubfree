@@ -19,6 +19,14 @@ class DeliveryService:
                 return
 
         # 2. Логика выдачи (обращение к поставщику, генерация ключа и т.д.)
+        if "FAIL_DELIVERY" in order_id:
+            with SessionLocal() as db:
+                repo = OrderRepository(db)
+                repo.update_status(order_id, OrderStatus.FAILED)
+            self.event_bus.emit("delivery_failed", {"order_id": order_id, "reason": "supplier_error"})
+            self.chat_service.send_message("admin", f"ALARM: Ошибка поставщика по заказу {order_id}!")
+            return
+
         # В симуляции:
         key = f"SIMULATION-KEY-{order_id}"
         

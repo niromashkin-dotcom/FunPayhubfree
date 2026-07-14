@@ -21,6 +21,10 @@ class OrderService:
         """Обработка оплаты: смена статуса, запись в Ledger, вызов доставки."""
         with SessionLocal() as db:
             repo = OrderRepository(db)
+            order = repo.get_order(order_id)
+            if order and order.status != OrderStatus.NEW.value:
+                # Idempotency check: already processed
+                return
             order = repo.update_status(order_id, OrderStatus.PAID)
             
         # Запись в Ledger

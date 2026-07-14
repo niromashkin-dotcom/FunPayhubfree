@@ -47,6 +47,37 @@ def run_simulation():
         txs = db.query(Transaction).filter(Transaction.order_id == ord_id_1).all()
         print(f"   [LEDGER] Transactions recorded successfully: {len(txs)} txs")
 
+    print("\n--- SCENARIO 2: DUPLICATE EVENT (IDEMPOTENCY) ---")
+    ord_id_2 = f"ORD-DUP-{uuid.uuid4().hex[:4].upper()}"
+    order_svc.create_order(ord_id_2, "Buyer_Dup", "Test")
+    event_bus.emit("order_paid", {"order_id": ord_id_2, "amount": 100.0})
+    order_svc.process_payment(ord_id_2, 100.0)
+    # Duplicate event arrives:
+    event_bus.emit("order_paid", {"order_id": ord_id_2, "amount": 100.0})
+    order_svc.process_payment(ord_id_2, 100.0)
+    with SessionLocal() as db:
+        txs = db.query(Transaction).filter(Transaction.order_id == ord_id_2).all()
+        print(f"   [LEDGER] Expected 1 SALE tx, got: {len(txs)} txs")
+
+    print("\n--- SCENARIO 3: DELIVERY FAILURE ---")
+    ord_id_3 = f"ORD-FAIL_DELIVERY-{uuid.uuid4().hex[:4].upper()}"
+    order_svc.create_order(ord_id_3, "Buyer_Fail", "No Stock")
+    order_svc.process_payment(ord_id_3, 50.0)
+    with SessionLocal() as db:
+        o = OrderRepository(db).get_order(ord_id_3)
+        print(f"   [DB] Order Status after failure: {o.status}")
+
+    print("\n--- SCENARIO 4: CCE CRASH ---")
+    ord_id_4 = f"ORD-{uuid.uuid4().hex[:4].upper()}"
+    order_svc.create_order(ord_id_4, "Buyer_CCE", "CRASH_CCE_KEY")
+    try:
+        delivery_svc.deliver_order(ord_id_4) # delivery uses chat_svc which will crash
+    except Exception as e:
+        print(f"   [CRASH] {e}")
+    with SessionLocal() as db:
+        # The delivery_status should ideally reflect the crash later, or the event journal retains the delivery_success event to retry
+        pass
+
     print("\n--- SCENARIO 5: SERVER DIED AFTER PAYMENT ---")
     ord_id_5 = f"ORD-DEAD-{uuid.uuid4().hex[:4].upper()}"
     # Simulate crash before processing

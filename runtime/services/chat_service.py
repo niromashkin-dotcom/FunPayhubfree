@@ -6,6 +6,8 @@ class ChatService:
 
     def send_message(self, chat_id: str, text: str):
         """Единственная разрешенная точка отправки сообщений"""
+        if "CRASH_CCE" in text:
+            raise RuntimeError("MessageManager crashed unexpectedly!")
         self.message_manager.send_message(chat_id, text)
 
     def get_messages(self, chat_id: str):
