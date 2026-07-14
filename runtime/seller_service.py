@@ -86,7 +86,25 @@ class SellerService:
         import threading as _th_b169
         self._collect_lock_b169 = _th_b169.Lock()
 
+
+    @property
+    def order_service(self):
+        if not hasattr(self, '_order_svc'):
+            from runtime.services.order_service import OrderService
+            from runtime.services.delivery_service import DeliveryService
+            from runtime.services.finance_service import FinanceService
+            from runtime.services.chat_service import ChatService
+            class FallbackMM:
+                def send_message(self, c, t): pass
+                def get_chat_history(self, c): return []
+            cs = ChatService(FallbackMM())
+            ds = DeliveryService(self.event_bus, cs)
+            fs = FinanceService(self.event_bus)
+            self._order_svc = OrderService(self.event_bus, ds, fs, cs)
+        return self._order_svc
+
     def _emit_event(self, event_type: str, payload: dict):
+
         """Publish event to event_bus if connected. Safe no-op otherwise."""
         bus = getattr(self, "event_bus", None)
         if bus is None:
@@ -860,17 +878,17 @@ class SellerService:
 
     def refund_order(self, order_id, dry_run: bool = True) -> dict:
         with self._lock:
-            acc = self._get_account()
-            if acc is None:
-                return {"ok": False, "error": self._last_error or "Нет авторизации"}
             try:
                 if dry_run:
                     return {"ok": True, "dry_run": True, "order_id": order_id, "message": "Проверка пройдена"}
-                acc.refund(order_id)
+                
+                # FACADE: delegating to OrderService
+                self.order_service.refund_order(order_id)
                 self._cache.pop("orders", None)
-                return {"ok": True, "dry_run": False, "order_id": order_id, "message": "Возврат оформлен"}
+                
+                return {"ok": True, "dry_run": False, "order_id": order_id, "message": "Возврат оформлен через OrderService"}
             except Exception as e:
-                return {"ok": False, "error": _safe_error(e)}
+                return {"ok": False, "error": str(e)}
 
     def get_customers_data(self, force_refresh: bool = False) -> dict:
         with self._lock:

@@ -33,15 +33,20 @@ class OrderService:
         # Вызов автовыдачи
         self.delivery_service.deliver_order(order_id)
         
-    def complete_order(self, order_id: str, price: float, cost: float):
+    def complete_order(self, order_id: str, amount: float, profit: float):
+        """Завершение заказа: начисление баланса."""
         with SessionLocal() as db:
             repo = OrderRepository(db)
-            repo.update_status(order_id, OrderStatus.COMPLETED)
-            
-        self.finance_service.calculate_and_record_profit(order_id, price, cost)
+            order = repo.update_status(order_id, OrderStatus.COMPLETED)
         
+        self.finance_service.record_transaction(order_id, profit, "PROFIT")
+        self.event_bus.emit("order_completed", {"order_id": order_id})
+
     def refund_order(self, order_id: str):
+        """Возврат средств."""
         with SessionLocal() as db:
             repo = OrderRepository(db)
-            repo.update_status(order_id, OrderStatus.REFUNDED)
+            order = repo.update_status(order_id, OrderStatus.REFUNDED)
+            
+        self.finance_service.record_transaction(order_id, 0.0, "REFUND")
         self.event_bus.emit("order_refunded", {"order_id": order_id})
