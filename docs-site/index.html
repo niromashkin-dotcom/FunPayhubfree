@@ -1,120 +1,222 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>FunPay Hub - Architecture Control Center</title>
+    <title>FunPay Hub - Architecture Control Center 2.0</title>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
-        h1 { text-align: center; color: #38bdf8; letter-spacing: 2px; }
-        .container { display: flex; flex-direction: column; align-items: center; gap: 40px; margin-top: 50px; }
-        .tier { display: flex; gap: 20px; justify-content: center; }
-        .node { background: #1e293b; border: 2px solid #3b82f6; padding: 20px 40px; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-weight: bold; text-align: center; min-width: 150px; }
-        .node:hover { background: #3b82f6; color: white; transform: scale(1.05); box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #475569; z-index: 100; max-width: 500px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
-        .modal.active { display: block; }
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 50; backdrop-filter: blur(4px); }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #38bdf8; letter-spacing: 2px; margin-bottom: 50px; font-weight: 300; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 40px; }
+        .tier { display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; }
+        .node { background: #1e293b; border: 2px solid #3b82f6; padding: 20px 30px; border-radius: 12px; cursor: pointer; transition: all 0.3s; font-weight: bold; text-align: center; min-width: 180px; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .node:hover { background: #3b82f6; color: white; transform: translateY(-5px); box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4); }
+        .node.safety { border-color: #f59e0b; color: #fcd34d; }
+        .node.safety:hover { background: #f59e0b; color: #fff; box-shadow: 0 10px 20px rgba(245, 158, 11, 0.4); }
+        
+        /* Modal Styles */
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; padding: 35px; border-radius: 16px; border: 1px solid #475569; z-index: 100; max-width: 550px; width: 90%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6); }
+        .modal.active { display: block; animation: fadeIn 0.3s ease-out; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); z-index: 50; backdrop-filter: blur(5px); }
         .overlay.active { display: block; }
-        .modal h2 { margin-top: 0; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 10px; }
-        .line { width: 2px; height: 40px; background: #475569; position: relative; }
-        .line::after { content: '▼'; position: absolute; bottom: -10px; left: -4px; color: #475569; font-size: 10px; }
-        .section-title { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; margin-top: 15px; margin-bottom: 5px; font-weight: 600; }
-        ul { margin: 0; padding-left: 20px; color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; }
-        .close-btn { background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; float: right; font-weight: bold; transition: background 0.2s; }
-        .close-btn:hover { background: #dc2626; }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; padding-bottom: 15px; margin-bottom: 20px; }
+        .modal h2 { margin: 0; color: #38bdf8; font-size: 1.8rem; }
+        .close-btn { background: transparent; color: #94a3b8; border: none; font-size: 1.5rem; cursor: pointer; transition: color 0.2s; }
+        .close-btn:hover { color: #f8fafc; }
+        
+        .card-content { display: flex; flex-direction: column; gap: 20px; }
+        .block { background: #0f172a; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; }
+        .block.warning { border-left-color: #ef4444; }
+        .block.success { border-left-color: #10b981; }
+        .block-title { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; letter-spacing: 1px; }
+        
+        p { margin: 0 0 10px 0; line-height: 1.5; color: #cbd5e1; }
+        ul { margin: 0; padding-left: 20px; color: #cbd5e1; line-height: 1.6; }
+        li { margin-bottom: 4px; }
+        
+        .status-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; background: rgba(16, 185, 129, 0.2); color: #10b981; margin-top: 5px; }
+        .status-badge.dev { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        
+        /* Flow Arrows */
+        .arrow-down { width: 2px; height: 40px; background: #475569; position: relative; }
+        .arrow-down::after { content: '▼'; position: absolute; bottom: -10px; left: -4px; color: #475569; font-size: 10px; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -45%); } to { opacity: 1; transform: translate(-50%, -50%); } }
     </style>
 </head>
 <body>
 
-    <h1>FUNPAY HUB CORE</h1>
+    <h1>FUNPAY HUB CORE 2.0</h1>
 
     <div class="container">
-        <!-- EventBus -->
-        <div class="node" onclick="openModal('EventBus')">EventBus</div>
         
-        <div class="line"></div>
+        <!-- Real Mode Safety -->
+        <div class="node safety" onclick="openModal('Safety')">🛡️ Real Mode Safety</div>
+        
+        <div class="arrow-down"></div>
+
+        <!-- EventBus -->
+        <div class="node" onclick="openModal('EventBus')" style="border-color: #a855f7;">🧠 EventBus</div>
+        
+        <div class="arrow-down"></div>
         
         <!-- Micro Services -->
         <div class="tier">
-            <div class="node" onclick="openModal('OrderService')">Orders</div>
-            <div class="node" onclick="openModal('ChatService')">CCE</div>
-            <div class="node" onclick="openModal('FinanceService')">Ledger</div>
-            <div class="node" onclick="openModal('DeliveryService')">Delivery</div>
+            <div class="node" onclick="openModal('Orders')">📦 Orders</div>
+            <div class="node" onclick="openModal('CCE')">💬 CCE</div>
+            <div class="node" onclick="openModal('Lots')">🏪 Lots</div>
+            <div class="node" onclick="openModal('Ledger')">💰 Ledger</div>
+            <div class="node" onclick="openModal('Delivery')">🚚 Delivery</div>
         </div>
 
-        <div class="line"></div>
+        <div class="arrow-down"></div>
         
         <!-- Plugins -->
-        <div class="node" onclick="openModal('Plugins')">Plugins</div>
+        <div class="node" onclick="openModal('Plugins')" style="border-color: #10b981;">🔌 Plugins</div>
     </div>
 
+    <!-- Modal System -->
     <div class="overlay" id="overlay" onclick="closeModal()"></div>
-
     <div class="modal" id="modal">
-        <button class="close-btn" onclick="closeModal()">X</button>
-        <h2 id="m-title">Service Name</h2>
-        
-        <div class="section-title">Files</div>
-        <ul id="m-files"></ul>
-
-        <div class="section-title">Events Consumed</div>
-        <ul id="m-events"></ul>
-
-        <div class="section-title">Database Writes</div>
-        <ul id="m-writes"></ul>
-
-        <div class="section-title">Forbidden Actions</div>
-        <ul id="m-forbidden" style="color: #fca5a5;"></ul>
+        <div class="modal-header">
+            <h2 id="m-title">Title</h2>
+            <button class="close-btn" onclick="closeModal()">✖</button>
+        </div>
+        <div class="card-content" id="m-content">
+            <!-- Content injected via JS -->
+        </div>
     </div>
 
     <script>
-        const data = {
-            'OrderService': {
-                files: ['runtime/services/order_service.py'],
-                events: ['order_paid'],
-                writes: ['orders', 'transactions'],
-                forbidden: ['direct message sending']
-            },
-            'ChatService': {
-                files: ['runtime/services/chat_service.py', 'runtime/messages/message_manager.py'],
-                events: ['None (Receives direct method calls)'],
-                writes: ['None'],
-                forbidden: ['business logic', 'bypassing MessageManager']
-            },
-            'FinanceService': {
-                files: ['runtime/services/finance_service.py'],
-                events: ['order_paid', 'order_completed', 'order_refunded'],
-                writes: ['transactions'],
-                forbidden: ['direct message sending', 'order status changes']
-            },
-            'DeliveryService': {
-                files: ['runtime/services/delivery_service.py'],
-                events: ['order_paid'],
-                writes: ['orders (status update)'],
-                forbidden: ['direct message sending (must use ChatService)']
+        const db = {
+            'Safety': {
+                title: '🛡️ Real Mode Safety',
+                desc: 'Защитный механизм для реальных денег.',
+                simple: 'Перед запуском с реальными деньгами система работает в режиме строгих ограничений, чтобы избежать потери средств при ошибках.',
+                can: '<ul><li>Максимум заказов в день: 5</li><li>Максимальная цена лота: 500₽</li><li>Автовыдача: отключена</li><li>При ошибках: моментальное уведомление админу</li></ul>',
+                cant: '',
+                files: 'runtime/real_mode.py, runtime/monitor_mode.py',
+                status: '🟢 Включен',
+                statusClass: 'success'
             },
             'EventBus': {
-                files: ['eventbus.py', 'runtime/database/repositories.py (EventJournal)'],
-                events: ['All Events (Routing)'],
-                writes: ['event_journal'],
-                forbidden: ['modifying event payload', 'swallowing exceptions silently']
+                title: '🧠 EventBus',
+                desc: 'Центральная нервная система проекта.',
+                simple: 'Все важные действия проходят через события. Например: "клиент оплатил заказ", "заказ выполнен", "получен отзыв". Модули не общаются друг с другом напрямую, они просто слушают Эфир.',
+                can: '<ul><li>Передача событий между модулями</li><li>Восстановление после падения сервера (EventJournal)</li><li>Запуск автоматических процессов</li></ul>',
+                cant: '<ul><li>Не работает с деньгами</li><li>Не отправляет сообщения клиентам</li></ul>',
+                files: 'runtime/event_bus.py<br>runtime/database/event_journal.py',
+                status: '🟢 Production Ready',
+                statusClass: 'success'
+            },
+            'Orders': {
+                title: '📦 Orders',
+                desc: 'Главный контроллер всех заказов.',
+                simple: 'Следит за жизнью заказа от оплаты до завершения.<br><br><b>Путь заказа:</b><br>Оплата → Создание → Выдача товара → Отзыв.',
+                can: 'Хранит: номер заказа, покупателя, текущий статус и всю историю изменений.<br><br><b>Статусы:</b><br>NEW → PAID → PROCESSING → DELIVERED → COMPLETED',
+                cant: '<ul><li>Запрещено отправлять сообщения в чат</li><li>Запрещено считать прибыль</li></ul>',
+                files: 'runtime/services/order_service.py',
+                status: '🟢 Production Ready',
+                statusClass: 'success'
+            },
+            'CCE': {
+                title: '💬 CCE (Customer Communication Engine)',
+                desc: 'Умный центр общения.',
+                simple: 'Любое сообщение покупателю проходит <b>только</b> здесь. Раньше каждый плагин писал сам по себе (что было опасно). Теперь: Любой модуль → CCE → Покупатель.',
+                can: '<ul><li>Автоответы</li><li>Уведомления</li><li>Гарантированная доставка сообщений</li><li>Сценарии общения</li></ul>',
+                cant: '<ul><li>Не лезет в бизнес-логику заказов</li></ul>',
+                files: 'runtime/messages/<br>MessageManager, ScenarioEngine',
+                status: '🟢 Production Ready',
+                statusClass: 'success'
+            },
+            'Lots': {
+                title: '🏪 Lots',
+                desc: 'Управление товарами.',
+                simple: 'Всё, что связано с вашими лотами на FunPay.',
+                can: '<ul><li>Смотреть список товаров</li><li>Менять цены (в т.ч. массово)</li><li>Включать и выключать продажи</li></ul>',
+                cant: '<ul><li>Не работает с деньгами</li><li>Не общается с клиентами</li><li>Не меняет статусы заказов</li></ul>',
+                files: 'runtime/services/lot_service.py',
+                status: '🟢 Production Ready',
+                statusClass: 'success'
+            },
+            'Ledger': {
+                title: '💰 Ledger',
+                desc: 'Финансовый мозг.',
+                simple: 'Здесь система считает реальные деньги и сводит дебет с кредитом.<br><br>Продажа: +150₽<br>Закупка: -60₽<br>Комиссия: -10₽<br><b>Прибыль: +80₽</b>',
+                can: '<b>Главное правило:</b> Никто кроме Ledger не имеет права вычислять прибыль.',
+                cant: '<ul><li>Не выдает товары</li><li>Не пишет в чат</li></ul>',
+                files: 'runtime/database/ledger.py<br>Таблица transactions',
+                status: '🟢 Production Ready',
+                statusClass: 'success'
+            },
+            'Delivery': {
+                title: '🚚 Delivery',
+                desc: 'Автоматическая выдача товара.',
+                simple: 'После оплаты именно этот блок решает, как покупатель получит товар.<br><br>Оплата → DeliveryService → Получить ключ → Отправить через CCE → Закрыть заказ.',
+                can: '<ul><li>Выдача ключей/аккаунтов</li><li>Работа с API поставщиков</li><li>Обработка ошибок доставки</li></ul>',
+                cant: '',
+                files: 'runtime/services/delivery_service.py',
+                status: '⏳ В разработке (Ожидает миграции)',
+                statusClass: 'dev'
             },
             'Plugins': {
-                files: ['plugins/*'],
-                events: ['Various based on plugin'],
-                writes: ['None directly (Uses Facades/Services)'],
-                forbidden: ['direct DB access', 'bypassing EventBus']
+                title: '🔌 Plugins',
+                desc: 'Расширения системы.',
+                simple: 'Дополнительные роботы, которые подключаются к ядру (AutoSMM, AutoDonate, AutoBump, Telegram Notify, Stars).',
+                can: 'Получили событие из EventBus → Сделали свою маленькую работу.',
+                cant: '<b>Главное правило:</b> Плагины НЕ управляют системой и не имеют прямого доступа к API FunPay (работают через фасад).',
+                files: 'plugins/',
+                status: '🟢 Подключены',
+                statusClass: 'success'
             }
         };
 
-        function openModal(service) {
-            document.getElementById('m-title').innerText = service;
-            const d = data[service];
-            
-            document.getElementById('m-files').innerHTML = d.files.map(f => `<li>${f}</li>`).join('');
-            document.getElementById('m-events').innerHTML = d.events.map(e => `<li>${e}</li>`).join('');
-            document.getElementById('m-writes').innerHTML = d.writes.map(w => `<li>${w}</li>`).join('');
-            document.getElementById('m-forbidden').innerHTML = d.forbidden.map(f => `<li>${f}</li>`).join('');
+        function openModal(key) {
+            const data = db[key];
+            if(!data) return;
 
+            document.getElementById('m-title').innerText = data.title;
+            
+            let contentHTML = `
+                <div class="block">
+                    <div class="block-title">Что это</div>
+                    <p>${data.desc}</p>
+                </div>
+                
+                <div class="block">
+                    <div class="block-title">Простыми словами</div>
+                    <p>${data.simple}</p>
+                </div>
+            `;
+
+            if(data.can) {
+                contentHTML += `
+                <div class="block success">
+                    <div class="block-title">Отвечает за / Умеет</div>
+                    ${data.can.startsWith('<') ? data.can : `<p>${data.can}</p>`}
+                </div>`;
+            }
+
+            if(data.cant) {
+                contentHTML += `
+                <div class="block warning">
+                    <div class="block-title">Не делает / Запрещено</div>
+                    ${data.cant.startsWith('<') ? data.cant : `<p>${data.cant}</p>`}
+                </div>`;
+            }
+
+            contentHTML += `
+                <div class="block">
+                    <div class="block-title">Файлы (Под капотом)</div>
+                    <p style="font-family: monospace; font-size: 0.9rem; color: #93c5fd;">${data.files}</p>
+                </div>
+                
+                <div>
+                    <span class="status-badge ${data.statusClass}">${data.status}</span>
+                </div>
+            `;
+
+            document.getElementById('m-content').innerHTML = contentHTML;
             document.getElementById('modal').classList.add('active');
             document.getElementById('overlay').classList.add('active');
         }
