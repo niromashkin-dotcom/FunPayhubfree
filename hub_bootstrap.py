@@ -454,7 +454,7 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
     # G2: Auto market update on startup + every 3 hours
     try:
         from runtime.seller_service import seller_service_singleton as _svc_g2
-        _start_market_auto_update(_svc_g2, interval_sec=3 * 60 * 60, verbose=verbose)
+        _start_market_auto_update(_svc_g2, interval_sec=3 * 60 * 60, verbose=verbose, hub_url=hub_url)
         if verbose:
             print("[Bootstrap] Market auto-update started (3h)")
     except Exception as _ew_g2:
@@ -483,7 +483,7 @@ def init_plugin_system(plugins_dir: str = "plugins", verbose: bool = True, hub_u
 # G2: Market auto-update
 # ---------------------------------------------------------------------
 
-def _start_market_auto_update(seller_service, interval_sec=3 * 60 * 60, verbose=True):
+def _start_market_auto_update(seller_service, interval_sec=3 * 60 * 60, verbose=True, hub_url="http://127.0.0.1:5000"):
     import threading, time
 
     def _update():
