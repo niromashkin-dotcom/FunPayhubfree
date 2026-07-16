@@ -31,8 +31,21 @@ class DeliveryService:
         key = f"SIMULATION-KEY-{order_id}"
         
         # 3. Отправка ключа покупателю строго через ChatService -> CCE
-        self.chat_service.send_message(order.buyer_id, f"Ваш товар: {key}\nСпасибо за покупку!")
-        
+        try:
+            self.chat_service.send_message(order.buyer_id, f"Ваш товар: {key}\nСпасибо за покупку!")
+        except Exception as e:
+            with SessionLocal() as db:
+                repo = OrderRepository(db)
+                # Устанавливаем статус PROCESSING, так как доставка зависла (DELIVERY_PENDING)
+                repo.update_status(order_id, OrderStatus.PROCESSING)
+            self.event_bus.emit("message_send_failed", {"order_id": order_id, "error": str(e)})
+            # Пытаемся уведомить админа (может тоже упасть, но игнорим)
+            try:
+                self.chat_service.send_message("admin", f"ALARM: CCE недоступен для выдачи заказа {order_id}!")
+            except:
+                pass
+            return
+            
         # 4. Смена статуса
         with SessionLocal() as db:
             repo = OrderRepository(db)

@@ -22,6 +22,10 @@ _archive/
 
 # Пользовательские данные и рантайм-состояние (не код, генерируется на лету)
 configs/*.json
+configs/assistant_history.json
+configs/account_notifications.json
+configs/autoreply_log.json
+configs/automation_log.json
 configs/plugins/*.json
 !configs/plugins/*.json.safe
 configs/autodelivery/

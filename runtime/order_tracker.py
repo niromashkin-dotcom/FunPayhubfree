@@ -42,7 +42,10 @@ class OrderPaymentTracker:
         self.svc = seller_service
         self.tg_bot_url = telegram_bot_url
         self.admin_chat_id = admin_chat_id or _tg_config().get("chat_id", "")
+        self._path = _project_root() / "data" / "state" / "pending_orders.json"
+        self._path.parent.mkdir(parents=True, exist_ok=True)
         self.pending_orders: Dict[str, Dict[str, Any]] = {}
+        self._load_pending()
         self._lock = threading.RLock()
         self._worker = None
         self._stop = threading.Event()
@@ -55,7 +58,27 @@ class OrderPaymentTracker:
         self._msg_manager = mm
         self._order_msgs = OrderMessages(mm)
         self._error_msgs = ErrorMessages(mm)
+        self._error_msgs = ErrorMessages(mm)
         self._notif_msgs = NotificationMessages(mm)
+
+    def _load_pending(self):
+        try:
+            if self._path.exists():
+                raw = self._path.read_text(encoding="utf-8")
+                self.pending_orders = json.loads(raw) if raw.strip() else {}
+            else:
+                self.pending_orders = {}
+        except Exception:
+            self.pending_orders = {}
+
+    def _save_pending(self):
+        try:
+            self._path.write_text(
+                json.dumps(self.pending_orders, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
 
     def start(self):
         if not self.event_bus:
@@ -92,6 +115,8 @@ class OrderPaymentTracker:
                             print(f"[OrderTracker] {action} error for {oid}: {e}")
                     for oid in to_remove:
                         self.pending_orders.pop(oid, None)
+                    if to_remove:
+                        self._save_pending()
 
         self._worker = threading.Thread(target=_loop, name="OrderTracker", daemon=True)
         self._worker.start()
@@ -109,7 +134,9 @@ class OrderPaymentTracker:
         if action == "ping":
             ping_num = data["pings_sent"] + 1
             data["pings_sent"] = ping_num
+            data["pings_sent"] = ping_num
             data["next_ping"] = data["start_time"] + 60 * ping_num
+            self._save_pending()
             text = (
                 f"🛒 НОВАЯ ПОКУПКА!\n\n"
                 f"📦 Лот: \"{lot_title}\"\n"
@@ -123,6 +150,7 @@ class OrderPaymentTracker:
 
         elif action == "warning":
             data["warned"] = True
+            self._save_pending()
             text = (
                 f"🚨 ПОСЛЕДНЕЕ ПРЕДУПРЕЖДЕНИЕ ({data['pings_sent']}/3)\n\n"
                 f"📦 Лот: \"{lot_title}\"\n"
@@ -209,8 +237,10 @@ class OrderPaymentTracker:
                     "lot_title": title,
                     "service_name": "",
                     "price": price,
+                    "price": price,
                     "url": url or f"https://funpay.com/orders/{order_id}/",
                 }
+                self._save_pending()
             print(f"[OrderTracker] Tracking order {order_id}")
             try:
                 from runtime.database.repository import Repository

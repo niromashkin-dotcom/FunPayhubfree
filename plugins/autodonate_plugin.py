@@ -131,11 +131,33 @@ class AutoDonatePlugin(PluginBase):
         self._orders_file = self._data_dir / "donate_orders.json"
         self._throttle = {}
         self._throttle_lock = threading.Lock()
-        self._last_telegram_notify = 0
+        self._pending_orders_file = self._data_dir / "autodonate_pending_orders.json"
         self._pending_orders = {}  # order_id -> {supplier, cfg, title, event, created_at, ping_count}
+        self._load_pending()
         self._pending_lock = threading.Lock()
         self._replenish_thread = None
         self._replenish_stop = threading.Event()
+
+    def _load_pending(self):
+        try:
+            if self._pending_orders_file.exists():
+                import json
+                raw = self._pending_orders_file.read_text(encoding="utf-8")
+                self._pending_orders = json.loads(raw) if raw.strip() else {}
+            else:
+                self._pending_orders = {}
+        except Exception:
+            self._pending_orders = {}
+
+    def _save_pending(self):
+        try:
+            import json, os, tempfile
+            fd, tmp = tempfile.mkstemp(dir=self._data_dir, prefix="pending_", suffix=".tmp")
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(self._pending_orders, f, ensure_ascii=False, indent=2)
+            os.replace(tmp, self._pending_orders_file)
+        except Exception as e:
+            self._log(f"Failed to save pending orders: {e}", level="warn")
 
     def on_enable(self):
         self._start_replenish_timer()
@@ -635,6 +657,8 @@ class AutoDonatePlugin(PluginBase):
                     to_process.append((order_id, info, "ping"))
             for order_id in to_remove:
                 self._pending_orders.pop(order_id, None)
+            if to_remove:
+                self._save_pending()
 
         for order_id, info, action in to_process:
             supplier = info.get("supplier")
@@ -653,6 +677,7 @@ class AutoDonatePlugin(PluginBase):
                     if order_id in self._pending_orders:
                         self._pending_orders[order_id]["ping_count"] = self._pending_orders[order_id].get("ping_count", 0) + 1
                         self._pending_orders[order_id]["last_ping"] = now
+                        self._save_pending()
             elif action == "expired":
                 self._log(f"⏰ Заказ {order_id} отменён: не пополнен баланс {supplier} за 25 минут")
                 self._send_telegram_notification(f"❌ Заказ {order_id} отменён. Лоты {supplier} сняты.")
@@ -687,6 +712,7 @@ class AutoDonatePlugin(PluginBase):
                 "ping_count": 0,
                 "last_ping": 0,
             }
+            self._save_pending()
         self._log(f"⏳ Заказ {order_id} добавлен в отслеживание пополнения {supplier}")
 
     # ====================================================================
