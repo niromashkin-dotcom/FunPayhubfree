@@ -1134,7 +1134,10 @@ class AutoSMMPlugin(PluginBase):
 
     def _fetch_my_lots(self):
         try:
-            data = self.http_client.get(self.hub_url + "/api/seller/lots", timeout=10)
+            import os
+            internal_token = os.environ.get("FUNPAYHUB_INTERNAL_TOKEN", "")
+            headers = {"X-API-Token": internal_token} if internal_token else {}
+            data = self.http_client.get(self.hub_url + "/api/seller/lots", headers=headers, timeout=10)
             return data.get("lots", []) if isinstance(data, dict) else []
         except Exception as e:
             self._log(f"fetch my lots failed: {e}", level="warn")

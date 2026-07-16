@@ -502,11 +502,14 @@ def _start_market_auto_update(seller_service, interval_sec=3 * 60 * 60, verbose=
 
 
 def _do_market_update(seller_service, hub_url="http://127.0.0.1:5000", verbose=True):
+    import os
+    internal_token = os.environ.get("FUNPAYHUB_INTERNAL_TOKEN", "")
+    headers = {"X-API-Token": internal_token} if internal_token else {}
     try:
-        _http_client.post(f"{hub_url}/api/market/heatmap", json={}, timeout=30)
-        _http_client.get(f"{hub_url}/api/market/niches", timeout=15)
-        _http_client.get(f"{hub_url}/api/market/competitors", timeout=15)
-        _http_client.get(f"{hub_url}/api/market/ratings", timeout=15)
+        _http_client.post(f"{hub_url}/api/market/heatmap", json={}, headers=headers, timeout=30)
+        _http_client.get(f"{hub_url}/api/market/niches", headers=headers, timeout=15)
+        _http_client.get(f"{hub_url}/api/market/competitors", headers=headers, timeout=15)
+        _http_client.get(f"{hub_url}/api/market/ratings", headers=headers, timeout=15)
         if verbose:
             print("[System] Рынок обновлён")
     except Exception as e:
@@ -622,6 +625,12 @@ def _run_health_check(verbose=True, plugin_manager=None, event_bus=None):
     for name, url, headers in suppliers:
         if not url:
             continue
+            
+        # Skip kosell if disabled
+        if name == "kosell" and plugin_manager:
+            auto_donate = plugin_manager.plugins.get("autodonate_plugin")
+            if auto_donate and not auto_donate.config.get("suppliers", {}).get("kosell", {}).get("enabled", False):
+                continue
         max_attempts = 3
         attempt = 0
         ok = False

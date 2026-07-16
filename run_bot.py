@@ -26,6 +26,7 @@ from bot.keyboards.main import get_main_menu
 from bot.formatters import format_welcome
 from bot.services import ai_agent_service
 from bot.services.cache_service import bot_cache
+from bot.api_client import api_client
 
 logging.basicConfig(
     level=logging.INFO,
@@ -118,38 +119,53 @@ async def main():
         logger.warning("Bot cache refresh start failed: %s", exc)
 
     try:
-        me = await bot.get_me()
-        logger.info("Bot connected: @%s (id=%s)", me.username, me.id)
-    except Exception as exc:
-        # НЕ делаем sys.exit: иначе процесс завершается, порт (для web-сервиса)
-        # закрывается, Render считает старт неуспешным и убивает/перезапускает
-        # инстанс → возникает 409 Conflict у polling. Логируем и идём дальше к polling.
-        logger.error("get_me failed (bot may still work via polling): %s", exc)
+        while True:
+            retries = [1, 5, 15, 30]
+            connected = False
+            for attempt in range(len(retries) + 1):
+                try:
+                    me = await bot.get_me()
+                    logger.info("Bot connected: @%s (id=%s)", me.username, me.id)
+                    await bot.delete_webhook(drop_pending_updates=True)
+                    logger.info("Webhook removed")
+                    
+                    await bot.set_my_commands([
+                        {"command": "start", "description": "Главное меню"},
+                        {"command": "menu", "description": "Главное меню"},
+                        {"command": "ping", "description": "Проверка связи"},
+                        {"command": "analyze", "description": "AI-анализ файла проекта"},
+                        {"command": "auth", "description": "Авторизация по паролю"},
+                    ])
+                    connected = True
+                    break
+                except Exception as exc:
+                    if attempt < len(retries):
+                        delay = retries[attempt]
+                        logger.warning("Telegram API connect failed: %s. Retrying in %d sec...", exc, delay)
+                        await asyncio.sleep(delay)
+                    else:
+                        logger.warning("Failed to connect to Telegram API after retries. Waiting 5 minutes...")
+                        break
+            
+            if not connected:
+                await asyncio.sleep(300)
+                continue
 
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        logger.info("Webhook removed")
-    except Exception as exc:
-        logger.warning("Failed to remove webhook: %s", exc)
-
-    await bot.set_my_commands([
-        {"command": "start", "description": "Главное меню"},
-        {"command": "menu", "description": "Главное меню"},
-        {"command": "ping", "description": "Проверка связи"},
-        {"command": "analyze", "description": "AI-анализ файла проекта"},
-        {"command": "auth", "description": "Авторизация по паролю"},
-    ])
-
-    logger.info("Starting polling...")
-    try:
-        await dp.start_polling(bot)
-    except asyncio.CancelledError:
-        pass
+            logger.info("Starting polling...")
+            try:
+                await dp.start_polling(bot)
+                break
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.error("Polling error: %s. Reconnecting in 5 mins...", exc)
+                await asyncio.sleep(300)
     finally:
         await ai_agent_service.stop()
         if health_runner is not None:
             await health_runner.cleanup()
         await bot.session.close()
+        await api_client.close()
 
 
 if __name__ == "__main__":

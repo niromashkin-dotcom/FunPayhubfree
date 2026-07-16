@@ -254,7 +254,10 @@ class AutoBumpPlugin(PluginBase):
 
         # Auto-detect from active lots
         try:
-            data = self.http_client.get(self.hub_url + "/api/seller/lots", timeout=10)
+            import os
+            internal_token = os.environ.get("FUNPAYHUB_INTERNAL_TOKEN", "")
+            headers = {"X-API-Token": internal_token} if internal_token else {}
+            data = self.http_client.get(self.hub_url + "/api/seller/lots", headers=headers, timeout=10)
             lots = data.get("lots") if isinstance(data, dict) else data
             if not isinstance(lots, list):
                 return []
