@@ -1,6 +1,7 @@
 import logging
 import telebot
 from typing import Any
+from functools import wraps
 from control_bot.services.core_service import CoreService
 from control_bot.services.monitor_service import MonitorService
 from control_bot import keyboards
@@ -19,9 +20,13 @@ def register_handlers(bot: telebot.TeleBot, core_service: CoreService, monitor_s
 
     def admin_check(func):
         """Декоратор для проверки прав администратора в хэндлерах."""
+        @wraps(func)
         def wrapper(message_or_call, *args, **kwargs):
             chat_id = message_or_call.chat.id if hasattr(message_or_call, "chat") else message_or_call.message.chat.id
-            if not is_admin(chat_id):
+            is_adm = is_admin(chat_id)
+            print(f"[DEBUG] admin_check for {func.__name__}: chat_id={chat_id}, is_admin={is_adm}")
+            if not is_adm:
+                print(f"[DEBUG] Access denied for chat_id={chat_id}")
                 if hasattr(message_or_call, "chat"):
                     bot.send_message(chat_id, "⛔ Доступ запрещен.")
                 else:
@@ -37,6 +42,7 @@ def register_handlers(bot: telebot.TeleBot, core_service: CoreService, monitor_s
     @bot.message_handler(commands=['start', 'help'])
     @admin_check
     def send_welcome(message):
+        print(f"[DEBUG] executing send_welcome for chat_id={message.chat.id}")
         bot.send_message(
             message.chat.id,
             "🤖 <b>Панель управления FunPayHub v2</b>\n\n"
@@ -48,6 +54,8 @@ def register_handlers(bot: telebot.TeleBot, core_service: CoreService, monitor_s
     @bot.message_handler(commands=['status'])
     @admin_check
     def cmd_status(message):
+        print(f"[DEBUG] executing cmd_status for chat_id={message.chat.id}")
+
         # Быстрый вывод краткого статуса как в Phase 1
         msg = bot.send_message(message.chat.id, "🔄 Сбор информации, подождите...")
         core = core_service.status()
