@@ -1,0 +1,6 @@
+{
+    "orders_db_path": "/opt/funpayhub/source/orders.db",
+    "funpayhub_db_path": "/opt/funpayhub/source/funpayhub.db",
+    "core_service_name": "funpayhub-core",
+    "log_lines_count": 20
+}
