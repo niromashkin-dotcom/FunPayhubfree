@@ -69,45 +69,21 @@ def get_core_status() -> dict:
         }
 
 def get_funpay_balance() -> dict:
-    """Получает баланс FunPay через API ядра или напрямую через FunPayAPI."""
+    """Получает баланс FunPay через API ядра."""
     load_environment()
     internal_token = os.environ.get("FUNPAYHUB_INTERNAL_TOKEN", "")
     
-    # 1. Пробуем запросить через API ядра
+    # Запрашиваем исключительно через API ядра
     try:
         headers = {"X-API-Token": internal_token} if internal_token else {}
         r = requests.get("http://127.0.0.1:5000/api/seller/balance/full", headers=headers, timeout=5)
         if r.status_code == 200:
             data = r.json()
-            # Достаем баланс
             if isinstance(data, dict):
                 return {"source": "core_api", "balance": data.get("balance"), "currency": data.get("currency", "RUB")}
-    except Exception:
-        pass
-
-    # 2. Fallback: Прямой запрос через FunPayAPI
-    golden_key = os.environ.get("FUNPAY_GOLDEN_KEY", "")
-    user_agent = os.environ.get("FUNPAY_USER_AGENT", "Mozilla/5.0")
-    if golden_key:
-        try:
-            # Импортируем FunPayAPI
-            from FunPayAPI.account import Account
-            acc = Account(golden_key, user_agent=user_agent)
-            # Запрашиваем продажи, чтобы получить актуальный баланс или парсим главную страницу
-            # Для простоты спарсим баланс через внутренний запрос
-            response = acc.method("get", "", {}, {}, raise_not_200=True)
-            html = response.content.decode("utf-8", errors="ignore")
-            # Находим баланс в шапке
-            # <span class="badge badge-balance">70.00 ₽</span>
-            match = re.search(r'class="badge badge-balance">([\d\.\s]+)\s*([₽$€])', html)
-            if match:
-                val = match.group(1).replace(" ", "")
-                curr = "RUB" if match.group(2) == "₽" else match.group(2)
-                return {"source": "direct_parse", "balance": val, "currency": curr}
-        except Exception as e:
-            return {"source": "error", "error": f"Direct parse error: {e}"}
-            
-    return {"source": "unknown", "error": "No credentials available or Core API is offline."}
+        return {"source": "error", "error": f"Core API status {r.status_code}"}
+    except Exception as e:
+        return {"source": "error", "error": f"Core API error: {e}"}
 
 def get_smm_balances() -> dict:
     """Получает балансы TwitBoost и LookSMM напрямую по их API ключам."""
