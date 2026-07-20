@@ -31,7 +31,10 @@ from control_bot.monitor import (
 load_environment()
 
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
-ADMIN_CHAT_ID = os.environ.get("TG_CHAT_ID", "")
+ADMIN_CHAT_ID = os.environ.get("TG_CHAT_ID", "").strip().strip('"').strip("'")
+
+print(f"[DEBUG] BOT_TOKEN first 5 chars: '{BOT_TOKEN[:5]}'")
+print(f"[DEBUG] ADMIN_CHAT_ID loaded: '{ADMIN_CHAT_ID}'")
 
 if not BOT_TOKEN:
     print("Error: TG_BOT_TOKEN is not set in .env! ❌")
@@ -44,6 +47,12 @@ def is_admin(chat_id):
     if not ADMIN_CHAT_ID:
         return True # Если чат не задан, разрешаем всем (в целях MVP/тестов)
     return str(chat_id) == str(ADMIN_CHAT_ID)
+
+# Middleware для логирования всех входящих сообщений в stderr/stdout
+@bot.middleware_handler(update_types=['message'])
+def log_incoming_message(bot_instance, message):
+    print(f"[LOG] Incoming message: chat_id={message.chat.id}, text='{message.text}', is_admin={is_admin(message.chat.id)}")
+
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
