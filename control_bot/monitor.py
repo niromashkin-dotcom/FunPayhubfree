@@ -180,7 +180,7 @@ def get_last_errors() -> list:
     lines_count = cfg.get("log_lines_count", 20)
     try:
         cmd = ["journalctl", "-u", service_name, "-n", str(lines_count), "--no-pager"]
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=5)
         log_lines = res.stdout.strip().split("\n")
         
         # Фильтруем строки с ERROR, Exception, Traceback
