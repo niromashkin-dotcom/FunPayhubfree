@@ -89,31 +89,35 @@ def send_status(message):
             # 1. Статус службы
             core = get_core_status()
             core_icon = "🟢" if core.get("active") else "🔴"
-            core_info = f"{core_icon} <b>Ядро {core['name']}</b>: {core['status'].upper()} ({core['sub_status']})\nPID: <code>{core['pid']}</code> | Запуск: <code>{core['uptime']}</code>"
+            core_sub = str(core.get("sub_status", "")).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            core_info = f"{core_icon} <b>Ядро {core['name']}</b>: {core['status'].upper()} ({core_sub})\nPID: <code>{core['pid']}</code> | Запуск: <code>{core['uptime']}</code>"
             
             # 2. Балансы
             fp = get_funpay_balance()
             if "error" in fp:
-                fp_info = f"🔴 <b>FunPay</b>: Ошибка (<code>{fp['error']}</code>)"
+                fp_err = str(fp['error']).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                fp_info = f"🔴 <b>FunPay</b>: Ошибка (<code>{fp_err}</code>)"
             else:
                 fp_info = f"💰 <b>FunPay</b>: <code>{fp['balance']} {fp['currency']}</code> (Источник: {fp['source']})"
                 
             smm = get_smm_balances()
-            tb_info = f"📶 <b>TwitBoost</b>: <code>{smm['twitboost']}</code>"
-            ls_info = f"📶 <b>LookSMM</b>: <code>{smm['looksmm']}</code>"
+            tb_balance = str(smm.get('twitboost', 'N/A')).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            looksmm_balance = str(smm.get('looksmm', 'N/A')).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            tb_info = f"📶 <b>TwitBoost</b>: <code>{tb_balance}</code>"
+            ls_info = f"📶 <b>LookSMM</b>: <code>{looksmm_balance}</code>"
             
             # 3. Статистика
             orders = get_orders_stats()
             orders_info = (
                 f"📦 <b>Заказы</b>:\n"
-                f"  └ Всего: <code>{orders['total']}</code>\n"
-                f"  └ Активных: <code>{orders['active']}</code>\n"
-                f"  └ Выполнено: <code>{orders['completed']}</code>\n"
-                f"  └ Возвращено: <code>{orders['refunded']}</code>"
+                f"  └ Всего: <code>{orders.get('total', 0)}</code>\n"
+                f"  └ Активных: <code>{orders.get('active', 0)}</code>\n"
+                f"  └ Выполнено: <code>{orders.get('completed', 0)}</code>\n"
+                f"  └ Возвращено: <code>{orders.get('refunded', 0)}</code>"
             )
             
             lots = get_lots_stats()
-            lots_info = f"💎 <b>Лоты</b>: всего <code>{lots['total']}</code>, активных <code>{lots['active']}</code>"
+            lots_info = f"💎 <b>Лоты</b>: всего <code>{lots.get('total', 0)}</code>, активных <code>{lots.get('active', 0)}</code>"
             
             # 4. Ошибки
             errors = get_last_errors()
@@ -144,7 +148,11 @@ def send_status(message):
             
         except Exception as inner_e:
             logger.exception("Error during status accumulation")
-            bot.edit_message_text(f"❌ Ошибка сбора статуса: {inner_e}", chat_id=message.chat.id, message_id=status_msg.message_id)
+            err_msg = str(inner_e).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            try:
+                bot.edit_message_text(f"❌ Ошибка сбора статуса: {err_msg}", chat_id=message.chat.id, message_id=status_msg.message_id, parse_mode="HTML")
+            except Exception:
+                logger.exception("Failed to send error message to Telegram")
             
     except Exception:
         logger.exception("Fatal error in send_status handler")
