@@ -67,11 +67,11 @@ def send_welcome(message):
             bot.send_message(message.chat.id, "⛔ Доступ запрещен.")
             return
         welcome_text = (
-            "🤖 **Control Bot v2 (FunPayHub)**\n\n"
+            "🤖 <b>Control Bot v2 (FunPayHub)</b>\n\n"
             "Доступные команды:\n"
             "📊 /status — Проверить статус системы, балансы и ошибки."
         )
-        bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown")
+        bot.send_message(message.chat.id, welcome_text, parse_mode="HTML")
     except Exception:
         logger.exception("Error in send_welcome handler")
 
@@ -89,45 +89,49 @@ def send_status(message):
             # 1. Статус службы
             core = get_core_status()
             core_icon = "🟢" if core.get("active") else "🔴"
-            core_info = f"{core_icon} **Ядро {core['name']}**: {core['status'].upper()} ({core['sub_status']})\nPID: `{core['pid']}` | Запуск: `{core['uptime']}`"
+            core_info = f"{core_icon} <b>Ядро {core['name']}</b>: {core['status'].upper()} ({core['sub_status']})\nPID: <code>{core['pid']}</code> | Запуск: <code>{core['uptime']}</code>"
             
             # 2. Балансы
             fp = get_funpay_balance()
             if "error" in fp:
-                fp_info = f"🔴 **FunPay**: Ошибка ({fp['error']})"
+                fp_info = f"🔴 <b>FunPay</b>: Ошибка (<code>{fp['error']}</code>)"
             else:
-                fp_info = f"💰 **FunPay**: `{fp['balance']} {fp['currency']}` (Источник: {fp['source']})"
+                fp_info = f"💰 <b>FunPay</b>: <code>{fp['balance']} {fp['currency']}</code> (Источник: {fp['source']})"
                 
             smm = get_smm_balances()
-            tb_info = f"📶 **TwitBoost**: `{smm['twitboost']}`"
-            ls_info = f"📶 **LookSMM**: `{smm['looksmm']}`"
+            tb_info = f"📶 <b>TwitBoost</b>: <code>{smm['twitboost']}</code>"
+            ls_info = f"📶 <b>LookSMM</b>: <code>{smm['looksmm']}</code>"
             
             # 3. Статистика
             orders = get_orders_stats()
             orders_info = (
-                f"📦 **Заказы**:\n"
-                f"  └ Всего: `{orders['total']}`\n"
-                f"  └ Активных: `{orders['active']}`\n"
-                f"  └ Выполнено: `{orders['completed']}`\n"
-                f"  └ Возвращено: `{orders['refunded']}`"
+                f"📦 <b>Заказы</b>:\n"
+                f"  └ Всего: <code>{orders['total']}</code>\n"
+                f"  └ Активных: <code>{orders['active']}</code>\n"
+                f"  └ Выполнено: <code>{orders['completed']}</code>\n"
+                f"  └ Возвращено: <code>{orders['refunded']}</code>"
             )
             
             lots = get_lots_stats()
-            lots_info = f"💎 **Лоты**: всего `{lots['total']}`, активных `{lots['active']}`"
+            lots_info = f"💎 <b>Лоты</b>: всего <code>{lots['total']}</code>, активных <code>{lots['active']}</code>"
             
             # 4. Ошибки
             errors = get_last_errors()
             if errors:
-                errors_str = "\n".join([f"⚠️ `{line[:100]}`" for line in errors])
-                errors_info = f"🚨 **Последние ошибки в логах**:\n{errors_str}"
+                escaped_errors = []
+                for line in errors:
+                    esc = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                    escaped_errors.append(f"⚠️ <code>{esc[:100]}</code>")
+                errors_str = "\n".join(escaped_errors)
+                errors_info = f"🚨 <b>Последние ошибки в логах</b>:\n{errors_str}"
             else:
-                errors_info = "✅ **Критических ошибок в логах за последнее время не обнаружено.**"
+                errors_info = "✅ <b>Критических ошибок в логах за последнее время не обнаружено.</b>"
                 
             # Формируем итоговый текст
             report = (
-                f"📊 **СТАТУС СИСТЕМЫ FUNPAYHUB**\n\n"
+                f"📊 <b>СТАТУС СИСТЕМЫ FUNPAYHUB</b>\n\n"
                 f"{core_info}\n\n"
-                f"💳 **Балансы**:\n"
+                f"💳 <b>Балансы</b>:\n"
                 f"  ├ {fp_info}\n"
                 f"  ├ {tb_info}\n"
                 f"  └ {ls_info}\n\n"
@@ -136,7 +140,7 @@ def send_status(message):
                 f"{errors_info}"
             )
             
-            bot.edit_message_text(report, chat_id=message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
+            bot.edit_message_text(report, chat_id=message.chat.id, message_id=status_msg.message_id, parse_mode="HTML")
             
         except Exception as inner_e:
             logger.exception("Error during status accumulation")
