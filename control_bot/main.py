@@ -1,8 +1,13 @@
 # e:\Projects\FunPayHub\control_bot\main.py
 import os
 import sys
+import logging
 import telebot
 from telebot import types
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("ControlBot")
 
 # Патч для обхода бага с двойным массивом в Telegram API getUpdates
 original_get_updates = telebot.apihelper.get_updates
@@ -56,80 +61,90 @@ def log_incoming_message(bot_instance, message):
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    if not is_admin(message.chat.id):
-        bot.reply_to(message, "⛔ Доступ запрещен.")
-        return
-    welcome_text = (
-        "🤖 **Control Bot v2 (FunPayHub)**\n\n"
-        "Доступные команды:\n"
-        "📊 /status — Проверить статус системы, балансы и ошибки."
-    )
-    bot.reply_to(message, welcome_text, parse_mode="Markdown")
+    logger.info(f"Command /start or /help received from chat_id={message.chat.id}")
+    try:
+        if not is_admin(message.chat.id):
+            bot.send_message(message.chat.id, "⛔ Доступ запрещен.")
+            return
+        welcome_text = (
+            "🤖 **Control Bot v2 (FunPayHub)**\n\n"
+            "Доступные команды:\n"
+            "📊 /status — Проверить статус системы, балансы и ошибки."
+        )
+        bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown")
+    except Exception:
+        logger.exception("Error in send_welcome handler")
 
 @bot.message_handler(commands=['status'])
 def send_status(message):
-    if not is_admin(message.chat.id):
-        bot.reply_to(message, "⛔ Доступ запрещен.")
-        return
-    
-    status_msg = bot.reply_to(message, "🔄 Сбор статистики, подождите...")
-    
+    logger.info(f"Command /status received from chat_id={message.chat.id}")
     try:
-        # 1. Статус службы
-        core = get_core_status()
-        core_icon = "🟢" if core.get("active") else "🔴"
-        core_info = f"{core_icon} **Ядро {core['name']}**: {core['status'].upper()} ({core['sub_status']})\nPID: `{core['pid']}` | Запуск: `{core['uptime']}`"
+        if not is_admin(message.chat.id):
+            bot.send_message(message.chat.id, "⛔ Доступ запрещен.")
+            return
         
-        # 2. Балансы
-        fp = get_funpay_balance()
-        if "error" in fp:
-            fp_info = f"🔴 **FunPay**: Ошибка ({fp['error']})"
-        else:
-            fp_info = f"💰 **FunPay**: `{fp['balance']} {fp['currency']}` (Источник: {fp['source']})"
+        status_msg = bot.send_message(message.chat.id, "🔄 Сбор статистики, подождите...")
+        
+        try:
+            # 1. Статус службы
+            core = get_core_status()
+            core_icon = "🟢" if core.get("active") else "🔴"
+            core_info = f"{core_icon} **Ядро {core['name']}**: {core['status'].upper()} ({core['sub_status']})\nPID: `{core['pid']}` | Запуск: `{core['uptime']}`"
             
-        smm = get_smm_balances()
-        tb_info = f"📶 **TwitBoost**: `{smm['twitboost']}`"
-        ls_info = f"📶 **LookSMM**: `{smm['looksmm']}`"
-        
-        # 3. Статистика
-        orders = get_orders_stats()
-        orders_info = (
-            f"📦 **Заказы**:\n"
-            f"  └ Всего: `{orders['total']}`\n"
-            f"  └ Активных: `{orders['active']}`\n"
-            f"  └ Выполнено: `{orders['completed']}`\n"
-            f"  └ Возвращено: `{orders['refunded']}`"
-        )
-        
-        lots = get_lots_stats()
-        lots_info = f"💎 **Лоты**: всего `{lots['total']}`, активных `{lots['active']}`"
-        
-        # 4. Ошибки
-        errors = get_last_errors()
-        if errors:
-            errors_str = "\n".join([f"⚠️ `{line[:100]}`" for line in errors])
-            errors_info = f"🚨 **Последние ошибки в логах**:\n{errors_str}"
-        else:
-            errors_info = "✅ **Критических ошибок в логах за последнее время не обнаружено.**"
+            # 2. Балансы
+            fp = get_funpay_balance()
+            if "error" in fp:
+                fp_info = f"🔴 **FunPay**: Ошибка ({fp['error']})"
+            else:
+                fp_info = f"💰 **FunPay**: `{fp['balance']} {fp['currency']}` (Источник: {fp['source']})"
+                
+            smm = get_smm_balances()
+            tb_info = f"📶 **TwitBoost**: `{smm['twitboost']}`"
+            ls_info = f"📶 **LookSMM**: `{smm['looksmm']}`"
             
-        # Формируем итоговый текст
-        report = (
-            f"📊 **СТАТУС СИСТЕМЫ FUNPAYHUB**\n\n"
-            f"{core_info}\n\n"
-            f"💳 **Балансы**:\n"
-            f"  ├ {fp_info}\n"
-            f"  ├ {tb_info}\n"
-            f"  └ {ls_info}\n\n"
-            f"{orders_info}\n"
-            f"{lots_info}\n\n"
-            f"{errors_info}"
-        )
-        
-        bot.edit_message_text(report, chat_id=message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
-        
-    except Exception as e:
-        bot.edit_message_text(f"❌ Ошибка сбора статуса: {e}", chat_id=message.chat.id, message_id=status_msg.message_id)
+            # 3. Статистика
+            orders = get_orders_stats()
+            orders_info = (
+                f"📦 **Заказы**:\n"
+                f"  └ Всего: `{orders['total']}`\n"
+                f"  └ Активных: `{orders['active']}`\n"
+                f"  └ Выполнено: `{orders['completed']}`\n"
+                f"  └ Возвращено: `{orders['refunded']}`"
+            )
+            
+            lots = get_lots_stats()
+            lots_info = f"💎 **Лоты**: всего `{lots['total']}`, активных `{lots['active']}`"
+            
+            # 4. Ошибки
+            errors = get_last_errors()
+            if errors:
+                errors_str = "\n".join([f"⚠️ `{line[:100]}`" for line in errors])
+                errors_info = f"🚨 **Последние ошибки в логах**:\n{errors_str}"
+            else:
+                errors_info = "✅ **Критических ошибок в логах за последнее время не обнаружено.**"
+                
+            # Формируем итоговый текст
+            report = (
+                f"📊 **СТАТУС СИСТЕМЫ FUNPAYHUB**\n\n"
+                f"{core_info}\n\n"
+                f"💳 **Балансы**:\n"
+                f"  ├ {fp_info}\n"
+                f"  ├ {tb_info}\n"
+                f"  └ {ls_info}\n\n"
+                f"{orders_info}\n"
+                f"{lots_info}\n\n"
+                f"{errors_info}"
+            )
+            
+            bot.edit_message_text(report, chat_id=message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
+            
+        except Exception as inner_e:
+            logger.exception("Error during status accumulation")
+            bot.edit_message_text(f"❌ Ошибка сбора статуса: {inner_e}", chat_id=message.chat.id, message_id=status_msg.message_id)
+            
+    except Exception:
+        logger.exception("Fatal error in send_status handler")
 
 if __name__ == "__main__":
-    print("Control Bot v2 is starting...")
+    logger.info("Control Bot v2 is starting...")
     bot.infinity_polling()
