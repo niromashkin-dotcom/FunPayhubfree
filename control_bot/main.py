@@ -4,6 +4,16 @@ import sys
 import telebot
 from telebot import types
 
+# Патч для обхода бага с двойным массивом в Telegram API getUpdates
+original_get_updates = telebot.apihelper.get_updates
+def patched_get_updates(*args, **kwargs):
+    res = original_get_updates(*args, **kwargs)
+    if res and isinstance(res, list) and len(res) > 0 and isinstance(res[0], list):
+        res = [item for sublist in res for item in sublist]
+    return res
+telebot.apihelper.get_updates = patched_get_updates
+
+
 # Добавляем корень проекта в пути импорта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
