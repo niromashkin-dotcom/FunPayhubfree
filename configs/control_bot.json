@@ -1,5 +1,5 @@
 {
-    "telegram_token": "8844368712:AAEWcerVziY2iPUEoe3Po4EAENkNHYNPWBY",
+    "telegram_token": "8753610810:AAE0I8lam5FaxKXnFb180dlWlhLr_5lYnkM",
     "admin_chat_id": "6934895652",
     "orders_db_path": "/opt/funpayhub/source/orders.db",
     "funpayhub_db_path": "/opt/funpayhub/source/funpayhub.db",
