@@ -32,31 +32,31 @@ def is_admin(chat_id: int) -> bool:
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    logger.info(f"Received /start from chat_id={message.chat.id}")
+    logger.info(f"Received /start (msg_id={message.message_id}) from chat_id={message.chat.id}")
     if not is_admin(message.chat.id):
         logger.warning(f"Access denied for chat_id={message.chat.id}")
         return
     
-    logger.info(f"[BEFORE SEND] Sending /start response to {message.chat.id}")
+    logger.info(f"[BEFORE SEND] Replying to /start msg_id={message.message_id} in {message.chat.id}")
     try:
-        msg = bot.send_message(message.chat.id, "👋 Привет! Я Control Bot v2.")
-        logger.info(f"[AFTER SEND] Response sent. message_id={msg.message_id}")
+        msg = bot.reply_to(message, "👋 Привет! Я Control Bot v2.")
+        logger.info(f"[AFTER SEND] Reply sent successfully. message_id={msg.message_id}")
     except Exception:
-        logger.exception("Failed to send /start response")
+        logger.exception("Failed to send /start reply")
 
 @bot.message_handler(commands=['status'])
 def handle_status(message):
-    logger.info(f"Received /status from chat_id={message.chat.id}")
+    logger.info(f"Received /status (msg_id={message.message_id}) from chat_id={message.chat.id}")
     if not is_admin(message.chat.id):
         logger.warning(f"Access denied for chat_id={message.chat.id}")
         return
 
-    logger.info(f"[BEFORE SEND] Sending /status response to {message.chat.id}")
+    logger.info(f"[BEFORE SEND] Replying to /status msg_id={message.message_id} in {message.chat.id}")
     try:
-        msg = bot.send_message(message.chat.id, "📊 Бот активен и работает!")
-        logger.info(f"[AFTER SEND] Response sent. message_id={msg.message_id}")
+        msg = bot.reply_to(message, "📊 Бот активен и работает!")
+        logger.info(f"[AFTER SEND] Reply sent successfully. message_id={msg.message_id}")
     except Exception:
-        logger.exception("Failed to send /status response")
+        logger.exception("Failed to send /status reply")
 
 if __name__ == "__main__":
     logger.info("Removing webhook before starting polling...")
