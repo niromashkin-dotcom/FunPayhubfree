@@ -13,24 +13,22 @@ def escape_html(text: Any) -> str:
 
 def safe_send_message(bot: telebot.TeleBot, chat_id: int, text: str, **kwargs) -> Any:
     try:
-        print(f"[DEBUG] Sending message to {chat_id}: {text[:50]}...")
+        logger.info(f"[BEFORE SEND] Sending message to chat_id={chat_id}, text='{text[:30]}...'")
         msg = bot.send_message(chat_id, text, **kwargs)
-        print(f"[DEBUG] SUCCESS: Message sent (id={msg.message_id})")
+        logger.info(f"[AFTER SEND] Message sent successfully. message_id={msg.message_id}")
         return msg
     except Exception as e:
-        print(f"[ERROR] FAIL send_message: {e}")
-        logger.exception("send_message failed")
+        logger.exception(f"[SEND ERROR] Failed to send message to {chat_id}: {e}")
         return None
 
 def safe_edit_message(bot: telebot.TeleBot, text: str, chat_id: int, message_id: int, **kwargs) -> Any:
     try:
-        print(f"[DEBUG] Editing message {message_id} in {chat_id}...")
+        logger.info(f"[BEFORE EDIT] Editing message_id={message_id} in chat_id={chat_id}")
         msg = bot.edit_message_text(text, chat_id=chat_id, message_id=message_id, **kwargs)
-        print(f"[DEBUG] SUCCESS: Message edited")
+        logger.info(f"[AFTER EDIT] Message edited successfully.")
         return msg
     except Exception as e:
-        print(f"[ERROR] FAIL edit_message_text: {e}")
-        logger.exception("edit_message_text failed")
+        logger.exception(f"[EDIT ERROR] Failed to edit message {message_id}: {e}")
         return None
 
 def safe_answer_callback(bot: telebot.TeleBot, callback_id: str, text: str = None, show_alert: bool = False):

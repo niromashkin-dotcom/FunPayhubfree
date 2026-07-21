@@ -2,19 +2,11 @@ import os
 import sys
 import logging
 import telebot
+import requests
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ControlBot")
-
-# Патч для обхода бага с двойным массивом в Telegram API getUpdates
-original_get_updates = telebot.apihelper.get_updates
-def patched_get_updates(*args, **kwargs):
-    res = original_get_updates(*args, **kwargs)
-    if res and isinstance(res, list) and len(res) > 0 and isinstance(res[0], list):
-        res = [item for sublist in res for item in sublist]
-    return res
-telebot.apihelper.get_updates = patched_get_updates
 
 # Добавляем корень проекта в пути импорта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -25,19 +17,39 @@ from control_bot.handlers import register_handlers
 
 # Инициализируем сервисы
 monitor_service = MonitorService()
-# Загружаем имя службы из конфига
 core_service_name = monitor_service.config.get("core_service_name", "funpayhub-core")
 core_service = CoreService(service_name=core_service_name)
 
-BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
-ADMIN_CHAT_ID = os.environ.get("TG_CHAT_ID", "").strip().strip('"').strip("'")
+# Приоритет: CONTROL_BOT_TOKEN из env -> telegram_token из config -> TG_BOT_TOKEN из env
+BOT_TOKEN = (
+    os.environ.get("CONTROL_BOT_TOKEN") 
+    or monitor_service.config.get("telegram_token") 
+    or os.environ.get("TG_BOT_TOKEN", "")
+).strip().strip('"').strip("'")
 
-print(f"[DEBUG] BOT_TOKEN first 5 chars: '{BOT_TOKEN[:5]}'")
+ADMIN_CHAT_ID = (
+    os.environ.get("ADMIN_CHAT_ID") 
+    or monitor_service.config.get("admin_chat_id") 
+    or os.environ.get("TG_CHAT_ID", "")
+).strip().strip('"').strip("'")
+
+print(f"[DEBUG] Full BOT_TOKEN loaded: '{BOT_TOKEN}'")
 print(f"[DEBUG] ADMIN_CHAT_ID loaded: '{ADMIN_CHAT_ID}'")
 
 if not BOT_TOKEN:
-    print("Error: TG_BOT_TOKEN is not set in .env! ❌")
+    logger.error("Error: CONTROL_BOT_TOKEN / telegram_token is not set! ❌")
     sys.exit(1)
+
+# Проверка подключения через requests напрямую
+try:
+    res = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe", timeout=10).json()
+    if res.get("ok"):
+        bot_info = res["result"]
+        logger.info(f"Bot authenticated successfully: @{bot_info.get('username')} (ID: {bot_info.get('id')})")
+    else:
+        logger.error(f"Failed to authenticate bot via Telegram API: {res}")
+except Exception:
+    logger.exception("Network check failed during bot startup")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -61,5 +73,12 @@ register_handlers(
 )
 
 if __name__ == "__main__":
-    logger.info("Control Bot v2 (Modular Panel) is starting...")
-    bot.infinity_polling()
+    logger.info("Removing any active webhooks before starting polling...")
+    try:
+        bot.remove_webhook(drop_pending_updates=True)
+        logger.info("Webhook removed successfully.")
+    except Exception:
+        logger.exception("Failed to remove webhook")
+
+    logger.info("Control Bot v2 (Modular Panel) is starting polling...")
+    bot.infinity_polling(timeout=10, long_polling_timeout=5)
