@@ -1,84 +1,70 @@
-import os
 import sys
-import logging
 import telebot
 import requests
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("ControlBot")
-
-# Добавляем корень проекта в пути импорта
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from control_bot.services.core_service import CoreService
-from control_bot.services.monitor_service import MonitorService
-from control_bot.handlers import register_handlers
-
-# Инициализируем сервисы
-monitor_service = MonitorService()
-core_service_name = monitor_service.config.get("core_service_name", "funpayhub-core")
-core_service = CoreService(service_name=core_service_name)
-
-# Приоритет: CONTROL_BOT_TOKEN из env -> telegram_token из config -> TG_BOT_TOKEN из env
-BOT_TOKEN = (
-    os.environ.get("CONTROL_BOT_TOKEN") 
-    or monitor_service.config.get("telegram_token") 
-    or os.environ.get("TG_BOT_TOKEN", "")
-).strip().strip('"').strip("'")
-
-ADMIN_CHAT_ID = (
-    os.environ.get("ADMIN_CHAT_ID") 
-    or monitor_service.config.get("admin_chat_id") 
-    or os.environ.get("TG_CHAT_ID", "")
-).strip().strip('"').strip("'")
-
-print(f"[DEBUG] Full BOT_TOKEN loaded: '{BOT_TOKEN}'")
-print(f"[DEBUG] ADMIN_CHAT_ID loaded: '{ADMIN_CHAT_ID}'")
+from control_bot.config import BOT_TOKEN, ADMIN_CHAT_ID
+from control_bot.logger import logger
 
 if not BOT_TOKEN:
-    logger.error("Error: CONTROL_BOT_TOKEN / telegram_token is not set! ❌")
+    logger.error("Error: BOT_TOKEN is empty! ❌")
     sys.exit(1)
 
-# Проверка подключения через requests напрямую
+logger.info(f"Loaded BOT_TOKEN (starts with: '{BOT_TOKEN[:8]}...')")
+logger.info(f"Loaded ADMIN_CHAT_ID: '{ADMIN_CHAT_ID}'")
+
+# Проверка связи с Telegram API
 try:
-    res = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe", timeout=10).json()
-    if res.get("ok"):
-        bot_info = res["result"]
-        logger.info(f"Bot authenticated successfully: @{bot_info.get('username')} (ID: {bot_info.get('id')})")
+    auth_check = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe", timeout=10).json()
+    if auth_check.get("ok"):
+        bot_user = auth_check["result"]
+        logger.info(f"Bot connected: @{bot_user.get('username')} (ID: {bot_user.get('id')})")
     else:
-        logger.error(f"Failed to authenticate bot via Telegram API: {res}")
+        logger.error(f"Telegram API getMe failed: {auth_check}")
 except Exception:
-    logger.exception("Network check failed during bot startup")
+    logger.exception("Failed to connect to Telegram API")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# Middleware для логирования всех входящих обновлений в консоль
-@bot.middleware_handler(update_types=['message'])
-def log_incoming_message(bot_instance, message):
-    is_adm = (not ADMIN_CHAT_ID) or (str(message.chat.id) == str(ADMIN_CHAT_ID))
-    print(f"[LOG] Incoming message: chat_id={message.chat.id}, text='{message.text}', is_admin={is_adm}")
+def is_admin(chat_id: int) -> bool:
+    if not ADMIN_CHAT_ID:
+        return True
+    return str(chat_id) == str(ADMIN_CHAT_ID)
 
-@bot.middleware_handler(update_types=['callback_query'])
-def log_incoming_callback(bot_instance, call):
-    is_adm = (not ADMIN_CHAT_ID) or (str(call.message.chat.id) == str(ADMIN_CHAT_ID))
-    print(f"[LOG] Incoming callback: chat_id={call.message.chat.id}, data='{call.data}', is_admin={is_adm}")
+@bot.message_handler(commands=['start'])
+def handle_start(message):
+    logger.info(f"Received /start from chat_id={message.chat.id}")
+    if not is_admin(message.chat.id):
+        logger.warning(f"Access denied for chat_id={message.chat.id}")
+        return
+    
+    logger.info(f"[BEFORE SEND] Sending /start response to {message.chat.id}")
+    try:
+        msg = bot.send_message(message.chat.id, "👋 Привет! Я Control Bot v2.")
+        logger.info(f"[AFTER SEND] Response sent. message_id={msg.message_id}")
+    except Exception:
+        logger.exception("Failed to send /start response")
 
-# Регистрируем хэндлеры
-register_handlers(
-    bot=bot,
-    core_service=core_service,
-    monitor_service=monitor_service,
-    admin_chat_id=ADMIN_CHAT_ID
-)
+@bot.message_handler(commands=['status'])
+def handle_status(message):
+    logger.info(f"Received /status from chat_id={message.chat.id}")
+    if not is_admin(message.chat.id):
+        logger.warning(f"Access denied for chat_id={message.chat.id}")
+        return
+
+    logger.info(f"[BEFORE SEND] Sending /status response to {message.chat.id}")
+    try:
+        msg = bot.send_message(message.chat.id, "📊 Бот активен и работает!")
+        logger.info(f"[AFTER SEND] Response sent. message_id={msg.message_id}")
+    except Exception:
+        logger.exception("Failed to send /status response")
 
 if __name__ == "__main__":
-    logger.info("Removing any active webhooks before starting polling...")
+    logger.info("Removing webhook before starting polling...")
     try:
         bot.remove_webhook(drop_pending_updates=True)
         logger.info("Webhook removed successfully.")
     except Exception:
         logger.exception("Failed to remove webhook")
 
-    logger.info("Control Bot v2 (Modular Panel) is starting polling...")
+    logger.info("Starting infinity_polling...")
     bot.infinity_polling(timeout=10, long_polling_timeout=5)

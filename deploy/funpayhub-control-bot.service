@@ -1,15 +1,15 @@
 [Unit]
-Description=FunPayHub Control Bot Service
-After=network.target funpayhub-core.service
+Description=FunPayHub Control Bot v2 Service
+After=network.target
 
 [Service]
 Type=simple
-User=funpay
+User=root
 WorkingDirectory=/opt/funpayhub/source
-ExecStart=/opt/funpayhub/venv/bin/python3 -m control_bot.main
+ExecStart=/opt/funpayhub/venv/bin/python3 control_bot/main.py
 Restart=always
-RestartSec=10
-Environment=PYTHONPATH=/opt/funpayhub/source
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target
