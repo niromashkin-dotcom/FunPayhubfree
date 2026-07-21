@@ -1,4 +1,6 @@
 {
+    "telegram_token": "8844368712:AAEWcerVziY2iPUEoe3Po4EAENkNHYNPWBY",
+    "admin_chat_id": "6934895652",
     "orders_db_path": "/opt/funpayhub/source/orders.db",
     "funpayhub_db_path": "/opt/funpayhub/source/funpayhub.db",
     "core_service_name": "funpayhub-core",

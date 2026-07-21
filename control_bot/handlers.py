@@ -73,8 +73,14 @@ def register_handlers(bot: telebot.TeleBot, core_service: CoreService, monitor_s
     @admin_check
     def send_welcome(message):
         print(f"[DEBUG] Entering send_welcome for chat_id={message.chat.id}")
-        # ТЕСТ: Отправка чистого текста без HTML и без клавиатуры
-        safe_send_message(bot, message.chat.id, "TEST")
+        safe_send_message(
+            bot,
+            message.chat.id,
+            "🤖 <b>Панель управления FunPayHub v2</b>\n\n"
+            "Выберите интересующий вас раздел:",
+            parse_mode="HTML",
+            reply_markup=keyboards.main_menu()
+        )
 
     @bot.message_handler(commands=['status'])
     @admin_check
