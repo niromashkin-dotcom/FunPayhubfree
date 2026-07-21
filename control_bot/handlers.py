@@ -74,7 +74,7 @@ def register_handlers(bot: telebot.TeleBot, core_service: CoreService, monitor_s
     def send_welcome(message):
         print(f"[DEBUG] Entering send_welcome for chat_id={message.chat.id}")
         # ТЕСТ: Отправка чистого текста без HTML и без клавиатуры
-        safe_send_message(message.chat.id, "TEST")
+        safe_send_message(bot, message.chat.id, "TEST")
 
     @bot.message_handler(commands=['status'])
     @admin_check
